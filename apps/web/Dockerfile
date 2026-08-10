@@ -23,7 +23,9 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+RUN npm run build \
+  && test -d .next/standalone \
+  || (echo "ERROR: .next/standalone missing — check next.config output:'standalone'" && ls -la .next && exit 1)
 
 FROM node:20-alpine AS runner
 WORKDIR /app
