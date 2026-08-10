@@ -12,12 +12,22 @@ type Subscription = {
   status?: string;
   currentPeriodEnd?: string | null;
   graceUntil?: string | null;
+  stripeCustomerId?: string | null;
 } | null;
+
+type Company = {
+  stripeCustomerId?: string | null;
+  status?: string;
+};
 
 export default function AssinaturaPage() {
   const { data: sub } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => api<Subscription>("/billing/subscription"),
+  });
+  const { data: company } = useQuery({
+    queryKey: ["company"],
+    queryFn: () => api<Company>("/company"),
   });
 
   const checkout = useMutation({
@@ -31,7 +41,10 @@ export default function AssinaturaPage() {
       }),
     onSuccess: (data) => {
       if (data.url) window.location.href = data.url;
-      else alert("Configure STRIPE_SECRET_KEY e STRIPE_PRICE_ID no .env da API.");
+      else
+        alert(
+          "Configure STRIPE_SECRET_KEY e STRIPE_PRICE_ID no .env da API.",
+        );
     },
   });
 
@@ -45,11 +58,18 @@ export default function AssinaturaPage() {
       }),
     onSuccess: (data) => {
       if (data.url) window.location.href = data.url;
-      else alert("Portal Stripe indisponível. Complete o checkout primeiro.");
+      else
+        alert(
+          "Portal Stripe indisponível. Conclua o checkout primeiro.",
+        );
     },
   });
 
-  const status = sub?.status || "TRIALING";
+  const status = sub?.status || company?.status || "TRIALING";
+  const canManage = Boolean(company?.stripeCustomerId || sub);
+  const errorMessage =
+    (portal.error as Error | null)?.message ||
+    (checkout.error as Error | null)?.message;
 
   return (
     <>
@@ -81,17 +101,33 @@ export default function AssinaturaPage() {
           ))}
         </ul>
         <div className="flex flex-wrap gap-3">
-          <Button disabled={checkout.isPending} onClick={() => checkout.mutate()}>
+          <Button
+            disabled={checkout.isPending}
+            onClick={() => checkout.mutate()}
+          >
             {checkout.isPending ? "ABRINDO..." : "IR PARA O CHECKOUT"}
           </Button>
           <Button
             variant="outline"
-            disabled={portal.isPending}
+            disabled={portal.isPending || !canManage}
             onClick={() => portal.mutate()}
+            title={
+              canManage
+                ? "Abrir portal Stripe"
+                : "Conclua o checkout antes de gerenciar"
+            }
           >
-            GERENCIAR ASSINATURA
+            {portal.isPending ? "ABRINDO..." : "GERENCIAR ASSINATURA"}
           </Button>
         </div>
+        {!canManage && (
+          <p className="mt-4 text-sm text-neutral-500">
+            Para gerenciar cartão ou cancelar, conclua o checkout primeiro.
+          </p>
+        )}
+        {errorMessage && (
+          <p className="mt-4 text-sm text-red-600">{errorMessage}</p>
+        )}
       </Card>
     </>
   );

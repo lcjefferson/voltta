@@ -129,10 +129,26 @@ export class AutomationsService {
     });
     if (!appointment) return;
 
-    const rule = await this.prisma.automationRule.findFirst({
-      where: { companyId: appointment.companyId, trigger, isActive: true },
+    const rules = await this.prisma.automationRule.findMany({
+      where: {
+        companyId: appointment.companyId,
+        trigger,
+        isActive: true,
+      },
+      orderBy: { createdAt: 'asc' },
     });
+    const rule = rules[0];
     if (!rule) return;
+
+    // Evita 2x a mesma automação se existirem regras duplicadas ativas
+    if (rules.length > 1) {
+      await this.prisma.automationRule.updateMany({
+        where: {
+          id: { in: rules.slice(1).map((r) => r.id) },
+        },
+        data: { isActive: false },
+      });
+    }
 
     if (trigger === 'A4' && !appointment.customer.marketingOptIn) return;
 
@@ -154,8 +170,12 @@ export class AutomationsService {
       actions[0]?.template ||
       'Olá {{nome}}, seu horário é {{data}} às {{hora}}. {{link}}';
     const text = renderTemplate(template, vars);
-    const key = `${trigger}:${appointmentId}:${rule.id}`;
+    // Uma execução por trigger + agendamento (não por ruleId)
+    const key = `${trigger}:${appointmentId}`;
+    const to =
+      appointment.customer.whatsapp || appointment.customer.phone || null;
 
+    let executionId: string;
     try {
       const execution = await this.prisma.automationExecution.create({
         data: {
@@ -166,36 +186,70 @@ export class AutomationsService {
           idempotencyKey: key,
           status: 'SCHEDULED',
           scheduledFor: new Date(Date.now() + delayMs),
-          payload: { ...vars, text, to: appointment.customer.whatsapp },
+          payload: { ...vars, text, to },
         },
       });
-
-      const run = async () => {
-        await this.prisma.automationExecution.update({
-          where: { id: execution.id },
-          data: { status: 'RUNNING' },
-        });
-        const result = await this.whatsapp.trySend(
-          appointment.companyId,
-          appointment.customer.whatsapp || appointment.customer.phone,
-          text,
-        );
-        await this.prisma.automationExecution.update({
-          where: { id: execution.id },
-          data: {
-            status: result.sent ? 'SUCCEEDED' : 'FAILED',
-            executedAt: new Date(),
-            errorMessage: result.sent ? null : result.reason,
-            payload: { ...vars, text, sendResult: result },
-          },
-        });
-      };
-
-      if (delayMs <= 0) void run();
-      else setTimeout(() => void run(), delayMs);
+      executionId = execution.id;
     } catch {
-      /* idempotent duplicate */
+      // Já agendada/enviada para este trigger+agendamento
+      return;
     }
+
+    const run = async () => {
+      // Claim atômico: só um worker envia
+      const claimed = await this.prisma.automationExecution.updateMany({
+        where: { id: executionId, status: 'SCHEDULED' },
+        data: { status: 'RUNNING' },
+      });
+      if (!claimed.count) return;
+
+      // Proteção extra: mesmo destino + mesmo texto nos últimos 2 min
+      if (to) {
+        const recent = await this.prisma.automationExecution.findMany({
+          where: {
+            companyId: appointment.companyId,
+            customerId: appointment.customerId,
+            status: 'SUCCEEDED',
+            executedAt: { gte: new Date(Date.now() - 120_000) },
+            id: { not: executionId },
+          },
+          take: 10,
+        });
+        const duplicated = recent.some((item) => {
+          const payload = item.payload as { text?: string; to?: string } | null;
+          return payload?.text === text && payload?.to === to;
+        });
+        if (duplicated) {
+          await this.prisma.automationExecution.update({
+            where: { id: executionId },
+            data: {
+              status: 'SKIPPED',
+              executedAt: new Date(),
+              errorMessage: 'Mensagem idêntica já enviada recentemente',
+            },
+          });
+          return;
+        }
+      }
+
+      const result = await this.whatsapp.trySend(
+        appointment.companyId,
+        to,
+        text,
+      );
+      await this.prisma.automationExecution.update({
+        where: { id: executionId },
+        data: {
+          status: result.sent ? 'SUCCEEDED' : 'FAILED',
+          executedAt: new Date(),
+          errorMessage: result.sent ? null : result.reason,
+          payload: { ...vars, text, to, sendResult: result },
+        },
+      });
+    };
+
+    if (delayMs <= 0) void run();
+    else setTimeout(() => void run(), delayMs);
   }
 
   list(companyId: string) {
@@ -214,12 +268,15 @@ export class AutomationsService {
   }
 
   async create(companyId: string, dto: CreateRuleDto) {
-    const exists = await this.prisma.automationRule.findFirst({
-      where: { companyId, trigger: dto.trigger, isActive: true },
-    });
-    // allow multiple custom triggers, but warn-ish for system triggers by allowing anyway
-    if (exists && ['A1', 'A2', 'A3', 'A4', 'A5'].includes(dto.trigger)) {
-      // keep allowed: user may want variants paused; uniqueness not enforced
+    if (['A1', 'A2', 'A3', 'A4', 'A5'].includes(dto.trigger)) {
+      const exists = await this.prisma.automationRule.findFirst({
+        where: { companyId, trigger: dto.trigger, isActive: true },
+      });
+      if (exists) {
+        throw new BadRequestException(
+          `Já existe uma automação ativa para ${dto.trigger}. Edite a existente ou desative-a antes de criar outra.`,
+        );
+      }
     }
 
     return this.prisma.automationRule.create({
@@ -235,7 +292,28 @@ export class AutomationsService {
   }
 
   async patch(companyId: string, id: string, dto: UpdateRuleDto) {
-    await this.one(companyId, id);
+    const current = await this.one(companyId, id);
+
+    const nextTrigger = dto.trigger ?? current.trigger;
+    const nextActive = dto.isActive ?? current.isActive;
+    if (
+      nextActive &&
+      ['A1', 'A2', 'A3', 'A4', 'A5'].includes(nextTrigger)
+    ) {
+      const conflict = await this.prisma.automationRule.findFirst({
+        where: {
+          companyId,
+          trigger: nextTrigger,
+          isActive: true,
+          id: { not: id },
+        },
+      });
+      if (conflict) {
+        throw new BadRequestException(
+          `Já existe outra automação ativa para ${nextTrigger}.`,
+        );
+      }
+    }
 
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) data.name = dto.name;

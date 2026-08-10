@@ -43,13 +43,21 @@ npm run dev         # http://localhost:3000
 
 Portas padrão do Compose: Postgres `15432`, Redis `16379` (para evitar conflito com serviços locais).
 
+## Deploy (Coolify)
+
+Guia completo: [`docs/09-coolify-deploy.md`](docs/09-coolify-deploy.md)  
+Template de envs: [`.env.coolify.example`](.env.coolify.example)
+
+Resumo: 4 serviços (Postgres, Redis, API `apps/api`, Web `apps/web`).  
+Domínio web: `https://volttaagenda.fortallabs.com.br` · API: `https://api.volttaagenda.fortallabs.com.br`.
+
 ## Fluxo PLG
 
 Landing → Cadastro (trial 7 dias) → Onboarding → Agenda/CRM → WhatsApp → Stripe.
 
 ## Documentação de produto
 
-Ver pasta [`docs/`](docs/) (Discovery, PRD, Arquitetura, ERD, Casos de Uso, Backlog, API, [WhatsApp Uazapi](docs/08-whatsapp-uazapi.md)).
+Ver pasta [`docs/`](docs/) (Discovery, PRD, Arquitetura, ERD, Casos de Uso, Backlog, API, [WhatsApp Uazapi](docs/08-whatsapp-uazapi.md), [Coolify](docs/09-coolify-deploy.md)).
 
 ## WhatsApp (Uazapi)
 

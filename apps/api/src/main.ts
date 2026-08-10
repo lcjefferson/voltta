@@ -11,8 +11,8 @@ async function bootstrap() {
   const swagger = new DocumentBuilder().setTitle('VOLTTA API').setVersion('1.0').addBearerAuth().build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, swagger));
   const port = Number(process.env.API_PORT || process.env.PORT || 3001);
-  await app.listen(port);
-  console.log(`VOLTTA API listening on http://localhost:${port}`);
-  console.log(`Swagger docs at http://localhost:${port}/docs`);
+  await app.listen(port, '0.0.0.0');
+  console.log(`VOLTTA API listening on http://0.0.0.0:${port}`);
+  console.log(`Swagger docs at http://0.0.0.0:${port}/docs`);
 }
 bootstrap();

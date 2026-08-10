@@ -106,9 +106,9 @@ class UsersService {
         ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
       },
     });
-    if (count >= 2) {
+    if (count >= 5) {
       throw new BadRequestException(
-        'Limite de 2 profissionais ativos atingido no plano atual',
+        'Limite de 5 profissionais ativos atingido no plano atual',
       );
     }
   }

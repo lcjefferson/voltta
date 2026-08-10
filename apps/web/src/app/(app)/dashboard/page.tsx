@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTitle } from "@/components/app-page";
+import { BookingLinkCard } from "@/components/booking-link-card";
 
 type Dashboard = {
   customersAtRisk: number;
@@ -72,6 +73,9 @@ export default function DashboardPage() {
   return (
     <>
       <PageTitle eyebrow="VISÃO GERAL" title="DASHBOARD VOLTTA" />
+      <div className="mb-5">
+        <BookingLinkCard dismissible />
+      </div>
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {metrics.map(([Icon, label, value, note]) => (
           <Card key={label}>

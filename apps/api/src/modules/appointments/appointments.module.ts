@@ -19,6 +19,12 @@ import {
   IsString,
 } from 'class-validator';
 import { AppointmentStatus } from '@prisma/client';
+import {
+  buildSlots,
+  normalizeBusinessHours,
+  wallClockToDate,
+  weekdayInSaoPaulo,
+} from '../../common/business-hours';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser, CurrentUser } from '../../common/decorators/auth.decorators';
@@ -69,6 +75,17 @@ class ListDto {
   professionalId?: string;
 }
 
+class AvailabilityQueryDto {
+  @IsString()
+  professionalId!: string;
+
+  @IsString()
+  date!: string;
+
+  @IsString()
+  serviceIds!: string;
+}
+
 @Injectable()
 export class AppointmentsService {
   constructor(
@@ -82,6 +99,84 @@ export class AppointmentsService {
       where: { id: customerId, lifecycleStage: { not: 'CUSTOMER' } },
       data: { lifecycleStage: 'CUSTOMER', convertedAt: new Date() },
     });
+  }
+
+  async availability(
+    companyId: string,
+    professionalId: string,
+    serviceIds: string[],
+    date: string,
+  ) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new BadRequestException('Data inválida');
+    }
+    if (!professionalId) {
+      throw new BadRequestException('Profissional obrigatório');
+    }
+    if (!serviceIds.length) {
+      throw new BadRequestException('Serviço obrigatório');
+    }
+
+    const company = await this.prisma.company.findUniqueOrThrow({
+      where: { id: companyId },
+      select: { businessHours: true },
+    });
+    const hours = normalizeBusinessHours(company.businessHours);
+    const weekday = weekdayInSaoPaulo(date);
+    const day = hours.days[String(weekday)];
+    if (!day) {
+      return {
+        date,
+        durationMinutes: 0,
+        open: false,
+        slots: [] as { startsAt: string; label: string }[],
+      };
+    }
+
+    const professional = await this.prisma.user.findFirst({
+      where: {
+        id: professionalId,
+        companyId,
+        isActive: true,
+        isProfessional: true,
+      },
+    });
+    if (!professional) {
+      throw new BadRequestException('Profissional inválido');
+    }
+
+    const services = await this.prisma.service.findMany({
+      where: { companyId, id: { in: serviceIds }, isActive: true },
+    });
+    if (!services.length || services.length !== serviceIds.length) {
+      throw new BadRequestException('Serviços inválidos');
+    }
+
+    const durationMinutes = services.reduce(
+      (sum, s) => sum + s.durationMinutes,
+      0,
+    );
+
+    const dayStart = wallClockToDate(date, '00:00');
+    const dayEnd = wallClockToDate(date, '23:59');
+    const busy = await this.prisma.appointment.findMany({
+      where: {
+        companyId,
+        professionalId,
+        status: { not: 'CANCELED' },
+        startsAt: { lt: dayEnd },
+        endsAt: { gt: dayStart },
+      },
+      select: { startsAt: true, endsAt: true },
+    });
+
+    return {
+      date,
+      durationMinutes,
+      open: true,
+      dayHours: day,
+      slots: buildSlots({ date, hours, durationMinutes, busy }),
+    };
   }
 
   async create(companyId: string, dto: CreateAppointmentDto) {
@@ -345,6 +440,20 @@ class AppointmentsController {
   @Get()
   list(@CurrentUser() u: AuthUser, @Query() q: ListDto) {
     return this.service.list(u.companyId, q);
+  }
+
+  @Get('availability')
+  availability(@CurrentUser() u: AuthUser, @Query() q: AvailabilityQueryDto) {
+    const ids = (q.serviceIds || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    return this.service.availability(
+      u.companyId,
+      q.professionalId,
+      ids,
+      q.date,
+    );
   }
 
   @Post()

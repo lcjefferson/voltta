@@ -311,10 +311,13 @@ export default function BookingPage() {
                 </Button>
                 <Button
                   className="w-full"
-                  disabled={!name || !whatsapp || book.isPending}
-                  onClick={() => book.mutate()}
+                  disabled={!name || !whatsapp || book.isPending || book.isSuccess}
+                  onClick={() => {
+                    if (book.isPending || book.isSuccess) return;
+                    book.mutate();
+                  }}
                 >
-                  CONFIRMAR
+                  {book.isPending ? "ENVIANDO..." : "CONFIRMAR"}
                 </Button>
               </div>
               {book.isError && (

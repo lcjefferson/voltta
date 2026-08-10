@@ -78,7 +78,7 @@ Landing → Cadastro empresa+ADMIN → Trial 7 dias ativo
 
 ### 5.3 Usuários / profissionais
 
-- Até 2 profissionais no plano MVP
+- Até 5 profissionais no plano MVP
 - Convite / criação por ADMIN
 - Associação a agenda
 
@@ -218,7 +218,7 @@ Seções: Hero, Benefícios, Como Funciona, Funcionalidades, Casos de Uso, Plano
 
 ## 7. Regras de negócio críticas
 
-1. Máximo 2 profissionais ativos por company no plano MVP.
+1. Máximo 5 profissionais ativos por company no plano MVP.
 2. Trial 7 dias a partir do `companies.trial_ends_at`.
 3. Sem subscription válida após grace → suspender mutações de negócio.
 4. Finalizar atendimento é a fonte de verdade para receita automática (pode haver receita manual).

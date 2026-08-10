@@ -1,0 +1,56 @@
+# VOLTTA — robots.txt
+# Domínio: https://volttaagenda.fortallabs.com.br
+# Permite indexação completa pelo Googlebot e demais buscadores da landing.
+
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+User-agent: Googlebot-Image
+Allow: /
+
+User-agent: Googlebot-News
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: *
+Allow: /
+Allow: /signup
+Allow: /login
+Allow: /agendar
+Allow: /llms.txt
+Allow: /marketing/
+Allow: /*.webp$
+Allow: /*.jpg$
+Allow: /*.png$
+Allow: /*.css$
+Allow: /*.js$
+
+# Áreas autenticadas do produto (não são páginas de marketing)
+Disallow: /dashboard
+Disallow: /agenda
+Disallow: /leads
+Disallow: /clientes
+Disallow: /profissionais
+Disallow: /servicos
+Disallow: /financeiro
+Disallow: /automacoes
+Disallow: /whatsapp
+Disallow: /assinatura
+Disallow: /configuracoes
+Disallow: /onboarding
+Disallow: /api/
+
+# Googlebot: indexação completa das páginas públicas (sem bloqueio extra)
+User-agent: Googlebot
+Allow: /
+Allow: /signup
+Allow: /login
+Allow: /agendar
+Allow: /llms.txt
+Allow: /marketing/
+
+Sitemap: https://volttaagenda.fortallabs.com.br/sitemap.xml
+Host: https://volttaagenda.fortallabs.com.br

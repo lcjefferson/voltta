@@ -17,6 +17,7 @@ import {
 } from '../../common/decorators/auth.decorators';
 import {
   DEFAULT_BUSINESS_HOURS,
+  listOpenDates,
   normalizeBusinessHours,
 } from '../../common/business-hours';
 
@@ -54,9 +55,11 @@ class CompanyService {
     const company = await this.prisma.company.findUniqueOrThrow({
       where: { id: companyId },
     });
+    const businessHours = normalizeBusinessHours(company.businessHours);
     return {
       ...company,
-      businessHours: normalizeBusinessHours(company.businessHours),
+      businessHours,
+      openDates: listOpenDates(businessHours, new Date(), 21),
     };
   }
 

@@ -62,9 +62,27 @@ class BillingService {
       where: { id: companyId },
     });
     if (!c.stripeCustomerId) {
-      throw new BadRequestException('Cliente Stripe não encontrado');
+      throw new BadRequestException(
+        'Nenhuma assinatura Stripe ainda. Conclua o checkout primeiro.',
+      );
     }
-    return this.stripeProvider.portal(c.stripeCustomerId, dto.returnUrl);
+    try {
+      const result = await this.stripeProvider.portal(
+        c.stripeCustomerId,
+        dto.returnUrl,
+      );
+      if (!result.url) {
+        throw new BadRequestException(
+          'Portal Stripe indisponível. Verifique STRIPE_SECRET_KEY.',
+        );
+      }
+      return result;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      const message =
+        error instanceof Error ? error.message : 'Falha ao abrir o portal';
+      throw new BadRequestException(message);
+    }
   }
 
   subscription(companyId: string) {

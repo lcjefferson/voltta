@@ -78,7 +78,7 @@ Prefixo `/v1`. Breaking changes → `/v2`.
 | Method | Path | Roles |
 |--------|------|-------|
 | GET | `/v1/users` | ADMIN |
-| POST | `/v1/users` | ADMIN (enforce ≤2 professionals) |
+| POST | `/v1/users` | ADMIN (enforce ≤5 professionals) |
 | PATCH | `/v1/users/{id}` | ADMIN |
 | POST | `/v1/users/{id}/deactivate` | ADMIN |
 

@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { PageTitle } from "@/components/app-page";
-import { BookingLinkCard } from "@/components/booking-link-card";
+import { useAuthStore } from "@/lib/auth-store";
+import { cn } from "@/lib/utils";
 
 type Customer = { id: string; name: string; whatsapp?: string | null };
 type Service = { id: string; name: string; price?: number | string };
@@ -27,11 +28,100 @@ type Appointment = {
   totalAmount?: number | string;
   customer?: { id: string; name: string };
   professional?: { id: string; name: string };
-  services?: { price?: number | string; service?: { name: string; price?: number | string } }[];
+  services?: {
+    price?: number | string;
+    service?: { name: string; price?: number | string };
+  }[];
 };
+type Company = { openDates?: string[] };
+type Availability = {
+  date: string;
+  open: boolean;
+  slots: { startsAt: string; label: string }[];
+};
+
+type PeriodFilter = "today" | "week" | "month";
 
 function money(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/** Data YYYY-MM-DD em America/Sao_Paulo */
+function spDateParts(d = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(d);
+  const get = (type: string) =>
+    Number(parts.find((p) => p.type === type)?.value || 0);
+  return { y: get("year"), m: get("month"), d: get("day") };
+}
+
+function spWeekday(isoDate: string) {
+  // noon SP avoids edge issues
+  return new Date(`${isoDate}T12:00:00-03:00`).getUTCDay();
+}
+
+function isoDateFromYmd(y: number, m: number, d: number) {
+  return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+}
+
+function addDaysYmd(y: number, m: number, d: number, delta: number) {
+  const dt = new Date(Date.UTC(y, m - 1, d + delta));
+  return {
+    y: dt.getUTCFullYear(),
+    m: dt.getUTCMonth() + 1,
+    d: dt.getUTCDate(),
+  };
+}
+
+function periodRange(period: PeriodFilter): { from: string; to: string; label: string } {
+  const { y, m, d } = spDateParts();
+  const today = isoDateFromYmd(y, m, d);
+
+  if (period === "today") {
+    return {
+      from: `${today}T00:00:00.000-03:00`,
+      to: `${today}T23:59:59.999-03:00`,
+      label: "Hoje",
+    };
+  }
+
+  if (period === "week") {
+    const weekday = spWeekday(today); // 0=dom
+    const mondayOffset = weekday === 0 ? -6 : 1 - weekday;
+    const mon = addDaysYmd(y, m, d, mondayOffset);
+    const sun = addDaysYmd(mon.y, mon.m, mon.d, 6);
+    const fromDay = isoDateFromYmd(mon.y, mon.m, mon.d);
+    const toDay = isoDateFromYmd(sun.y, sun.m, sun.d);
+    return {
+      from: `${fromDay}T00:00:00.000-03:00`,
+      to: `${toDay}T23:59:59.999-03:00`,
+      label: "Esta semana",
+    };
+  }
+
+  // month
+  const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  const fromDay = isoDateFromYmd(y, m, 1);
+  const toDay = isoDateFromYmd(y, m, lastDay);
+  return {
+    from: `${fromDay}T00:00:00.000-03:00`,
+    to: `${toDay}T23:59:59.999-03:00`,
+    label: "Este mês",
+  };
+}
+
+function formatDayLabel(isoDate: string) {
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString("pt-BR", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+  });
 }
 
 function statusLabel(status: string) {
@@ -69,8 +159,6 @@ function CustomerSearch({
       ),
   });
 
-  // also search leads by name via same endpoint with stage? customers default CUSTOMER only.
-  // Include both: fetch customers + leads when searching
   const { data: leadsData } = useQuery({
     queryKey: ["leads-search", query],
     queryFn: () =>
@@ -142,13 +230,35 @@ function CustomerSearch({
 
 export default function AgendaPage() {
   const qc = useQueryClient();
+  const user = useAuthStore((s) => s.user);
   const [customerId, setCustomerId] = useState("");
   const [changingId, setChangingId] = useState<string | null>(null);
   const [changeCustomerId, setChangeCustomerId] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [startsAt, setStartsAt] = useState("");
+  const [period, setPeriod] = useState<PeriodFilter>("today");
+  const [filterProfessionalId, setFilterProfessionalId] = useState<string>("");
 
-  const { data: appointments = [] } = useQuery({
-    queryKey: ["appointments"],
-    queryFn: () => api<Appointment[]>("/appointments"),
+  const range = useMemo(() => periodRange(period), [period]);
+
+  const { data: appointments = [], isFetching: loadingAppointments } = useQuery({
+    queryKey: [
+      "appointments",
+      period,
+      range.from,
+      range.to,
+      filterProfessionalId,
+    ],
+    queryFn: () => {
+      const params = new URLSearchParams({
+        from: range.from,
+        to: range.to,
+      });
+      if (filterProfessionalId) {
+        params.set("professionalId", filterProfessionalId);
+      }
+      return api<Appointment[]>(`/appointments?${params.toString()}`);
+    },
   });
   const { data: services = [] } = useQuery({
     queryKey: ["services"],
@@ -158,18 +268,53 @@ export default function AgendaPage() {
     queryKey: ["users"],
     queryFn: () => api<Professional[]>("/users"),
   });
+  const { data: company } = useQuery({
+    queryKey: ["company"],
+    queryFn: () => api<Company>("/company"),
+  });
+
+  const pros = professionals.filter(
+    (p) => p.isProfessional && p.isActive !== false,
+  );
+
+  useEffect(() => {
+    if (filterProfessionalId || user?.role !== "BARBEIRO" || !user?.id) return;
+    if (pros.some((p) => p.id === user.id)) {
+      setFilterProfessionalId(user.id);
+    }
+  }, [user?.role, user?.id, professionals, filterProfessionalId]);
 
   const { register, handleSubmit, reset, watch } = useForm<{
     professionalId: string;
     serviceId: string;
-    startsAt: string;
-  }>();
+  }>({
+    defaultValues: { professionalId: "", serviceId: "" },
+  });
 
+  const professionalId = watch("professionalId");
   const selectedServiceId = watch("serviceId");
   const selectedService = services.find((s) => s.id === selectedServiceId);
+  const openDates = company?.openDates || [];
+
+  const { data: availability, isFetching: loadingSlots } = useQuery({
+    queryKey: [
+      "appointments-availability",
+      professionalId,
+      selectedServiceId,
+      selectedDate,
+    ],
+    queryFn: () =>
+      api<Availability>(
+        `/appointments/availability?professionalId=${professionalId}&serviceIds=${selectedServiceId}&date=${selectedDate}`,
+      ),
+    enabled: !!professionalId && !!selectedServiceId && !!selectedDate,
+  });
+
+  const slots = availability?.slots || [];
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["appointments"] });
+    qc.invalidateQueries({ queryKey: ["appointments-availability"] });
     qc.invalidateQueries({ queryKey: ["revenues"] });
     qc.invalidateQueries({ queryKey: ["revenues-summary"] });
     qc.invalidateQueries({ queryKey: ["dashboard"] });
@@ -177,26 +322,25 @@ export default function AgendaPage() {
   };
 
   const create = useMutation({
-    mutationFn: (v: {
-      professionalId: string;
-      serviceId: string;
-      startsAt: string;
-    }) => {
+    mutationFn: (v: { professionalId: string; serviceId: string }) => {
       if (!customerId) throw new Error("Selecione um cliente");
+      if (!startsAt) throw new Error("Selecione um horário disponível");
       return api("/appointments", {
         method: "POST",
         body: JSON.stringify({
           customerId,
           professionalId: v.professionalId,
           serviceIds: [v.serviceId],
-          startsAt: new Date(v.startsAt).toISOString(),
+          startsAt,
         }),
       });
     },
     onSuccess: () => {
       invalidateAll();
-      reset();
+      reset({ professionalId: "", serviceId: "" });
       setCustomerId("");
+      setSelectedDate("");
+      setStartsAt("");
     },
   });
 
@@ -225,27 +369,69 @@ export default function AgendaPage() {
     },
   });
 
-  const pros = professionals.filter(
-    (p) => p.isProfessional && p.isActive !== false,
-  );
-
   return (
     <>
       <PageTitle eyebrow="OPERAÇÃO" title="AGENDA" />
-      <div className="mb-5">
-        <BookingLinkCard />
-      </div>
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <Card>
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="font-bold">Próximos horários</h2>
+              <h2 className="font-bold">Agenda</h2>
               <p className="mt-1 text-sm text-neutral-500">
-                Ao finalizar, o valor do serviço entra automático no financeiro.
+                {range.label}
+                {filterProfessionalId
+                  ? ` · ${pros.find((p) => p.id === filterProfessionalId)?.name || "profissional"}`
+                  : " · todos os profissionais"}
               </p>
             </div>
-            <Badge>{appointments.length} agendamentos</Badge>
+            <Badge>
+              {loadingAppointments
+                ? "..."
+                : `${appointments.length} agendamento${appointments.length === 1 ? "" : "s"}`}
+            </Badge>
           </div>
+
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="inline-flex rounded-md border border-neutral-200 bg-neutral-50 p-1">
+              {(
+                [
+                  ["today", "Hoje"],
+                  ["week", "Semana"],
+                  ["month", "Mês"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setPeriod(value)}
+                  className={cn(
+                    "rounded px-3 py-1.5 text-sm font-bold transition",
+                    period === value
+                      ? "bg-[#c4a574] text-[#171715]"
+                      : "text-neutral-600 hover:text-[#171715]",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <div className="sm:min-w-[200px]">
+              <select
+                className="w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                value={filterProfessionalId}
+                onChange={(e) => setFilterProfessionalId(e.target.value)}
+              >
+                <option value="">Todos os profissionais</option>
+                {pros.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
           <div className="space-y-3">
             {appointments.length ? (
               appointments.map((a) => {
@@ -258,10 +444,7 @@ export default function AgendaPage() {
                 const canAct =
                   a.status !== "CANCELED" && a.status !== "COMPLETED";
                 return (
-                  <div
-                    className="rounded-lg bg-neutral-50 p-4"
-                    key={a.id}
-                  >
+                  <div className="rounded-lg bg-neutral-50 p-4" key={a.id}>
                     <div className="flex items-start gap-4">
                       <span className="font-display text-2xl text-[#9b7a44]">
                         {new Date(a.startsAt).toLocaleString("pt-BR", {
@@ -357,7 +540,7 @@ export default function AgendaPage() {
               })
             ) : (
               <p className="py-10 text-center text-sm text-neutral-500">
-                Nenhum atendimento marcado.
+                Nenhum atendimento em {range.label.toLowerCase()}.
               </p>
             )}
           </div>
@@ -365,9 +548,15 @@ export default function AgendaPage() {
 
         <Card>
           <h2 className="font-bold">Novo agendamento</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Escolha o dia e veja só os horários livres — igual ao link público.
+          </p>
           <form
             className="mt-5 space-y-3"
-            onSubmit={handleSubmit((v) => create.mutate(v))}
+            onSubmit={handleSubmit((v) => {
+              if (create.isPending) return;
+              create.mutate(v);
+            })}
           >
             <CustomerSearch
               value={customerId}
@@ -377,7 +566,13 @@ export default function AgendaPage() {
               <Label>Profissional</Label>
               <select
                 className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
-                {...register("professionalId", { required: true })}
+                {...register("professionalId", {
+                  required: true,
+                  onChange: () => {
+                    setSelectedDate("");
+                    setStartsAt("");
+                  },
+                })}
               >
                 <option value="">Selecione</option>
                 {pros.map((p) => (
@@ -391,7 +586,13 @@ export default function AgendaPage() {
               <Label>Serviço</Label>
               <select
                 className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
-                {...register("serviceId", { required: true })}
+                {...register("serviceId", {
+                  required: true,
+                  onChange: () => {
+                    setSelectedDate("");
+                    setStartsAt("");
+                  },
+                })}
               >
                 <option value="">Selecione</option>
                 {services.map((s) => (
@@ -408,13 +609,72 @@ export default function AgendaPage() {
                 </p>
               )}
             </div>
+
             <div>
-              <Label>Data e hora</Label>
-              <Input
-                type="datetime-local"
-                {...register("startsAt", { required: true })}
-              />
+              <Label>Dia</Label>
+              {!professionalId || !selectedServiceId ? (
+                <p className="mt-2 text-sm text-neutral-500">
+                  Selecione profissional e serviço para ver os dias.
+                </p>
+              ) : !openDates.length ? (
+                <p className="mt-2 text-sm text-neutral-500">
+                  Nenhum dia de funcionamento configurado.
+                </p>
+              ) : (
+                <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                  {openDates.map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => {
+                        setSelectedDate(d);
+                        setStartsAt("");
+                      }}
+                      className={`min-w-[5.25rem] shrink-0 rounded-lg border px-2.5 py-2 text-xs font-semibold ${
+                        selectedDate === d
+                          ? "border-[#c4a574] bg-[#c4a574] text-[#171715]"
+                          : "border-neutral-200 bg-white hover:border-[#c4a574]"
+                      }`}
+                    >
+                      {formatDayLabel(d)}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+
+            {selectedDate && (
+              <div>
+                <Label>Horários disponíveis</Label>
+                {loadingSlots ? (
+                  <p className="mt-2 text-sm text-neutral-500">
+                    Buscando horários...
+                  </p>
+                ) : !slots.length ? (
+                  <p className="mt-2 text-sm text-neutral-500">
+                    Nenhum horário livre neste dia.
+                  </p>
+                ) : (
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {slots.map((slot) => (
+                      <button
+                        key={slot.startsAt}
+                        type="button"
+                        onClick={() => setStartsAt(slot.startsAt)}
+                        className={`rounded-lg border px-2 py-2 text-sm font-bold ${
+                          startsAt === slot.startsAt
+                            ? "border-[#c4a574] bg-[#c4a574] text-[#171715]"
+                            : "border-neutral-200 bg-white hover:border-[#c4a574]"
+                        }`}
+                      >
+                        {slot.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
             {(create.error as Error | null) && (
               <p className="text-sm text-red-600">
                 {(create.error as Error).message}
@@ -422,9 +682,11 @@ export default function AgendaPage() {
             )}
             <Button
               className="w-full"
-              disabled={create.isPending || !customerId}
+              disabled={
+                create.isPending || !customerId || !startsAt || !selectedDate
+              }
             >
-              AGENDAR
+              {create.isPending ? "AGENDANDO..." : "AGENDAR"}
             </Button>
           </form>
         </Card>

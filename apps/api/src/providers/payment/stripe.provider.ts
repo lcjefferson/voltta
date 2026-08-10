@@ -79,10 +79,52 @@ export class StripeProvider implements PaymentProvider {
   ): Promise<{ url: string | null }> {
     const stripe = this.client();
     if (!stripe) return { url: null };
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: returnUrl,
-    });
-    return { url: session.url };
+
+    try {
+      const configs = await stripe.billingPortal.configurations.list({
+        limit: 1,
+        active: true,
+      });
+      let configurationId = configs.data[0]?.id;
+
+      if (!configurationId) {
+        const created = await stripe.billingPortal.configurations.create({
+          business_profile: {
+            headline: 'Gerencie sua assinatura VOLTTA',
+          },
+          features: {
+            customer_update: {
+              enabled: true,
+              allowed_updates: ['email', 'address', 'phone', 'tax_id'],
+            },
+            invoice_history: { enabled: true },
+            payment_method_update: { enabled: true },
+            subscription_cancel: {
+              enabled: true,
+              mode: 'at_period_end',
+            },
+            subscription_update: {
+              enabled: false,
+            },
+          },
+        });
+        configurationId = created.id;
+        this.logger.log(`Portal Stripe configurado: ${configurationId}`);
+      }
+
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: returnUrl,
+        configuration: configurationId,
+      });
+      return { url: session.url };
+    } catch (error) {
+      this.logger.error(
+        `Falha ao abrir portal Stripe: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    }
   }
 }

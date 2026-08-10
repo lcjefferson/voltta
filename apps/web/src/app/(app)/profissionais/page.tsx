@@ -51,7 +51,7 @@ export default function ProfissionaisPage() {
 
   const role = watch("role");
   const activePros = users.filter((u) => u.isActive && u.isProfessional).length;
-  const atLimit = activePros >= 2;
+  const atLimit = activePros >= 5;
 
   const create = useMutation({
     mutationFn: (v: FormValues) =>
@@ -105,7 +105,7 @@ export default function ProfissionaisPage() {
     <>
       <PageTitle eyebrow="EQUIPE" title="PROFISSIONAIS">
         <p className="text-sm text-neutral-500">
-          {activePros}/2 profissionais ativos no plano
+          {activePros}/5 profissionais ativos no plano
         </p>
       </PageTitle>
 
@@ -214,7 +214,7 @@ export default function ProfissionaisPage() {
 
           {atLimit && (
             <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              Limite de 2 profissionais ativos atingido. Desative um para
+              Limite de 5 profissionais ativos atingido. Desative um para
               adicionar outro na agenda.
             </p>
           )}
