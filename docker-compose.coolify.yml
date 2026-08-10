@@ -1,0 +1,120 @@
+# VOLTTA — stack completa para Coolify (Docker Compose)
+#
+# Coolify → New Resource → Docker Compose
+#   Base Directory: /
+#   Compose file: docker-compose.coolify.yml
+# Domínios no painel:
+#   web → volttaagenda.fortallabs.com.br  (porta 3000)
+#   api → api.volttaagenda.fortallabs.com.br (porta 3001)
+#
+# Cole as variáveis de .env.coolify.example em Environment Variables
+# e troque as senhas antes (ou depois) do primeiro deploy.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voltta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voltta-change-me-now}
+      POSTGRES_DB: ${POSTGRES_DB:-voltta}
+    volumes:
+      - voltta_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voltta -d voltta"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - voltta
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - voltta_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - voltta
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      API_PORT: "3001"
+      PORT: "3001"
+      DATABASE_URL: postgresql://${POSTGRES_USER:-voltta}:${POSTGRES_PASSWORD:-voltta-change-me-now}@postgres:5432/${POSTGRES_DB:-voltta}?schema=public
+      REDIS_URL: redis://redis:6379
+      API_URL: ${API_URL:-https://api.volttaagenda.fortallabs.com.br}
+      WEBHOOK_PUBLIC_URL: ${WEBHOOK_PUBLIC_URL:-https://api.volttaagenda.fortallabs.com.br}
+      WEB_URL: ${WEB_URL:-https://volttaagenda.fortallabs.com.br}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-voltta-change-access-secret-min-32-chars!!}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-voltta-change-refresh-secret-min-32-chars!}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL: ${JWT_REFRESH_TTL:-30d}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}
+      WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-uazapi}
+      UAZAPI_BASE_URL: ${UAZAPI_BASE_URL:-https://free.uazapi.com}
+      UAZAPI_ADMIN_TOKEN: ${UAZAPI_ADMIN_TOKEN:-}
+    ports:
+      - "3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 90s
+      retries: 8
+    networks:
+      - voltta
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.volttaagenda.fortallabs.com.br/v1}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://volttaagenda.fortallabs.com.br}
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.volttaagenda.fortallabs.com.br/v1}
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://volttaagenda.fortallabs.com.br}
+    ports:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 5
+    networks:
+      - voltta
+
+volumes:
+  voltta_pg:
+  voltta_redis:
+
+networks:
+  voltta:
+    driver: bridge

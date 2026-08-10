@@ -1,6 +1,6 @@
 # Deploy no Coolify — VOLTTA
 
-Guia para subir **API**, **Web**, **PostgreSQL** e **Redis** no Coolify (Docker).
+Guia para subir **API**, **Web**, **PostgreSQL** e **Redis** no Coolify.
 
 ## Domínios oficiais
 
@@ -12,9 +12,36 @@ Guia para subir **API**, **Web**, **PostgreSQL** e **Redis** no Coolify (Docker)
 Ambos com **HTTPS** (Let's Encrypt no Coolify).  
 DNS: aponte os dois hosts para o IP/servidor do Coolify (A/CNAME).
 
-## Arquitetura no Coolify
+---
 
-Crie **4 recursos** no mesmo projeto/rede:
+## Opção A — Docker Compose (tudo junto) ✅ recomendado
+
+Um único resource sobe **Postgres + Redis + API + Web**.
+
+Arquivo: [`docker-compose.coolify.yml`](../docker-compose.coolify.yml)
+
+### No Coolify
+
+1. **+ New** → **Docker Compose** (não Application)
+2. Repo `lcjefferson/voltta`, branch `main`
+3. **Base Directory:** `/` (raiz)
+4. **Docker Compose Location:** `docker-compose.coolify.yml`
+5. Cole as envs de [`.env.coolify.example`](../.env.coolify.example) em **Environment Variables** (troque senhas/secrets)
+6. Em **Domains** / serviços:
+   - serviço `web` → `volttaagenda.fortallabs.com.br`
+   - serviço `api` → `api.volttaagenda.fortallabs.com.br`
+7. Deploy
+
+O `DATABASE_URL` e `REDIS_URL` já apontam para os serviços internos `postgres` e `redis` no compose — não precisa criar banco separado.
+
+### O que um Dockerfile sozinho NÃO faz
+
+Um **Dockerfile** só constrói **uma** imagem (web **ou** api).  
+Postgres/Redis/API/Web juntos exigem **Compose** (ou vários resources).
+
+---
+
+## Opção B — Apps separados (4 resources)
 
 | Serviço | Tipo | Base Directory | Dockerfile | Porta | Healthcheck |
 |---------|------|----------------|------------|-------|-------------|
@@ -23,15 +50,15 @@ Crie **4 recursos** no mesmo projeto/rede:
 | `voltta-api` | Application (Dockerfile) | `apps/api` | `Dockerfile` | **3001** | `GET /health` |
 | `voltta-web` | Application (Dockerfile) | `apps/web` | `Dockerfile` | **3000** | `GET /` |
 
-## Ordem de deploy
+## Ordem de deploy (Opção B)
 
 1. Suba **Postgres** e **Redis** e anote as connection strings internas.
 2. Configure e faça deploy da **API** com domínio `api.volttaagenda.fortallabs.com.br`.
-3. Configure e faça deploy do **Web** com domínio `volttaagenda.fortallabs.com.br` e build args `NEXT_PUBLIC_*`.
+3. Configure e faça deploy do **Web** com domínio `volttaagenda.fortallabs.com.br`.
 4. No Stripe, aponte o webhook para a API.
 5. No app, conecte o WhatsApp (o webhook usa `WEBHOOK_PUBLIC_URL`).
 
-## Configuração da API
+## Configuração da API (Opção B)
 
 **Build Pack:** Dockerfile  
 **Base Directory:** `apps/api`  

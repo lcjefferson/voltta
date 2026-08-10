@@ -45,10 +45,10 @@ Portas padrão do Compose: Postgres `15432`, Redis `16379` (para evitar conflito
 
 ## Deploy (Coolify)
 
-Guia completo: [`docs/09-coolify-deploy.md`](docs/09-coolify-deploy.md)  
-Template de envs: [`.env.coolify.example`](.env.coolify.example)
+**Guia rápido (Compose — tudo junto):** [`docs/10-coolify-one-click.md`](docs/10-coolify-one-click.md)  
+Stack: [`docker-compose.coolify.yml`](docker-compose.coolify.yml) · Envs: [`.env.coolify.example`](.env.coolify.example)  
+Detalhes: [`docs/09-coolify-deploy.md`](docs/09-coolify-deploy.md)
 
-Resumo: 4 serviços (Postgres, Redis, API `apps/api`, Web `apps/web`).  
 Domínio web: `https://volttaagenda.fortallabs.com.br` · API: `https://api.volttaagenda.fortallabs.com.br`.
 
 ## Fluxo PLG
