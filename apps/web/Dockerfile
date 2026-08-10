@@ -17,7 +17,7 @@ RUN apk add --no-cache libc6-compat
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-ARG NEXT_PUBLIC_API_URL=http://localhost:3001/v1
+ARG NEXT_PUBLIC_API_URL=https://api.volttaagenda.fortallabs.com.br/v1
 ARG NEXT_PUBLIC_SITE_URL=https://volttaagenda.fortallabs.com.br
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL

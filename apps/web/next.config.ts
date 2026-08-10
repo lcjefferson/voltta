@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // Sem "standalone": Coolify usa `npm start` → `next start`.
+  // Mantém o deploy simples e evita o warning de incompatibilidade.
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
