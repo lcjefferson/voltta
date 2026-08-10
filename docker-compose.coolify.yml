@@ -1,14 +1,11 @@
 # VOLTTA — stack completa para Coolify (Docker Compose)
 #
 # Coolify → New Resource → Docker Compose
-#   Base Directory: /
+#   Base Directory: / (vazio)
 #   Compose file: docker-compose.coolify.yml
-# Domínios no painel:
+# Domínios:
 #   web → volttaagenda.fortallabs.com.br  (porta 3000)
 #   api → api.volttaagenda.fortallabs.com.br (porta 3001)
-#
-# Cole as variáveis de .env.coolify.example em Environment Variables
-# e troque as senhas antes (ou depois) do primeiro deploy.
 
 services:
   postgres:
@@ -56,7 +53,13 @@ services:
       NODE_ENV: production
       API_PORT: "3001"
       PORT: "3001"
-      DATABASE_URL: postgresql://${POSTGRES_USER:-voltta}:${POSTGRES_PASSWORD:-voltta-change-me-now}@postgres:5432/${POSTGRES_DB:-voltta}?schema=public
+      # Prefer discrete POSTGRES_* (entrypoint monta DATABASE_URL com encode)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-voltta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voltta-change-me-now}
+      POSTGRES_DB: ${POSTGRES_DB:-voltta}
+      DATABASE_URL: ${DATABASE_URL:-}
       REDIS_URL: redis://redis:6379
       API_URL: ${API_URL:-https://api.volttaagenda.fortallabs.com.br}
       WEBHOOK_PUBLIC_URL: ${WEBHOOK_PUBLIC_URL:-https://api.volttaagenda.fortallabs.com.br}
@@ -76,10 +79,10 @@ services:
       - "3001"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
-      interval: 30s
+      interval: 15s
       timeout: 5s
-      start_period: 90s
-      retries: 8
+      start_period: 180s
+      retries: 12
     networks:
       - voltta
 
@@ -92,8 +95,7 @@ services:
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://volttaagenda.fortallabs.com.br}
     restart: unless-stopped
     depends_on:
-      api:
-        condition: service_healthy
+      - api
     environment:
       NODE_ENV: production
       PORT: "3000"
