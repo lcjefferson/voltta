@@ -1,0 +1,44 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: voltta-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: voltta
+      POSTGRES_PASSWORD: voltta
+      POSTGRES_DB: voltta
+    ports:
+      - "15432:5432"
+    volumes:
+      - voltta_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U voltta -d voltta"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: voltta-redis
+    restart: unless-stopped
+    ports:
+      - "16379:6379"
+    volumes:
+      - voltta_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: voltta-mailpit
+    restart: unless-stopped
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+
+volumes:
+  voltta_pg:
+  voltta_redis:

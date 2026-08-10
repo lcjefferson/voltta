@@ -1,0 +1,1 @@
+export interface PaymentProvider { checkout(companyId: string, successUrl: string, cancelUrl: string): Promise<{ url: string | null }>; portal(customerId: string, returnUrl: string): Promise<{ url: string | null }>; }
