@@ -3,11 +3,9 @@
 # Coolify:
 #   Base Directory: /
 #   Compose file: docker-compose.coolify.yml
+#   Domains na UI: VAZIOS (rotas nos labels)
 #   Advanced: Connect To Predefined Network = ON
 #             Raw Compose Deployment = OFF
-#
-# IMPORTANTE — Domains na UI devem ficar VAZIOS.
-# As rotas Traefik estão nos labels abaixo (a UI estava gerando Host(``) quebrado).
 
 services:
   postgres:
@@ -24,6 +22,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+    networks:
+      - voltta
 
   redis:
     image: redis:7-alpine
@@ -36,6 +36,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+    networks:
+      - voltta
 
   api:
     build:
@@ -80,8 +82,12 @@ services:
       timeout: 5s
       start_period: 180s
       retries: 12
+    networks:
+      - voltta
+      - coolify
     labels:
       - traefik.enable=true
+      - traefik.docker.network=coolify
       - traefik.http.routers.voltta-api-http.rule=Host(`api.volttaagenda.fortallabs.com.br`)
       - traefik.http.routers.voltta-api-http.entryPoints=http
       - traefik.http.routers.voltta-api-http.middlewares=redirect-to-https
@@ -117,8 +123,12 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 5
+    networks:
+      - voltta
+      - coolify
     labels:
       - traefik.enable=true
+      - traefik.docker.network=coolify
       - traefik.http.routers.voltta-web-http.rule=Host(`volttaagenda.fortallabs.com.br`)
       - traefik.http.routers.voltta-web-http.entryPoints=http
       - traefik.http.routers.voltta-web-http.middlewares=redirect-to-https
@@ -133,3 +143,9 @@ services:
 volumes:
   voltta_pg:
   voltta_redis:
+
+networks:
+  voltta:
+    driver: bridge
+  coolify:
+    external: true
