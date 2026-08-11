@@ -1,13 +1,13 @@
 # VOLTTA — stack completa para Coolify (Docker Compose)
 #
-# Coolify → New Resource → Docker Compose
-#   Base Directory: / (vazio)
+# Coolify:
+#   Base Directory: /
 #   Compose file: docker-compose.coolify.yml
-# Domínios (na UI do Coolify):
-#   web → https://volttaagenda.fortallabs.com.br:3000
-#   api → https://api.volttaagenda.fortallabs.com.br:3001
-# Advanced: Connect To Predefined Network = ON
-#           Raw Compose Deployment = OFF
+#   Advanced: Connect To Predefined Network = ON
+#             Raw Compose Deployment = OFF
+#
+# IMPORTANTE — Domains na UI devem ficar VAZIOS.
+# As rotas Traefik estão nos labels abaixo (a UI estava gerando Host(``) quebrado).
 
 services:
   postgres:
@@ -80,6 +80,18 @@ services:
       timeout: 5s
       start_period: 180s
       retries: 12
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.voltta-api-http.rule=Host(`api.volttaagenda.fortallabs.com.br`)
+      - traefik.http.routers.voltta-api-http.entryPoints=http
+      - traefik.http.routers.voltta-api-http.middlewares=redirect-to-https
+      - traefik.http.routers.voltta-api-http.service=voltta-api
+      - traefik.http.routers.voltta-api-https.rule=Host(`api.volttaagenda.fortallabs.com.br`)
+      - traefik.http.routers.voltta-api-https.entryPoints=https
+      - traefik.http.routers.voltta-api-https.tls=true
+      - traefik.http.routers.voltta-api-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.voltta-api-https.service=voltta-api
+      - traefik.http.services.voltta-api.loadbalancer.server.port=3001
 
   web:
     build:
@@ -105,6 +117,18 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 5
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.voltta-web-http.rule=Host(`volttaagenda.fortallabs.com.br`)
+      - traefik.http.routers.voltta-web-http.entryPoints=http
+      - traefik.http.routers.voltta-web-http.middlewares=redirect-to-https
+      - traefik.http.routers.voltta-web-http.service=voltta-web
+      - traefik.http.routers.voltta-web-https.rule=Host(`volttaagenda.fortallabs.com.br`)
+      - traefik.http.routers.voltta-web-https.entryPoints=https
+      - traefik.http.routers.voltta-web-https.tls=true
+      - traefik.http.routers.voltta-web-https.tls.certresolver=letsencrypt
+      - traefik.http.routers.voltta-web-https.service=voltta-web
+      - traefik.http.services.voltta-web.loadbalancer.server.port=3000
 
 volumes:
   voltta_pg:
