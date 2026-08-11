@@ -5,7 +5,7 @@
 #   Compose file: docker-compose.coolify.yml
 #   Domains na UI: VAZIOS (rotas + SSL nos labels abaixo)
 #   Advanced: Connect To Predefined Network = ON
-#             Raw Compose Deployment = OFF
+#             Raw Compose Deployment = ON  (senão o Coolify remove os labels Traefik)
 #
 # Labels HTTPS usam certresolver=letsencrypt do proxy Coolify.
 # Sem middleware redirect no HTTP — o redirect quebrava o ACME

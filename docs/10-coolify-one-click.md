@@ -20,8 +20,10 @@ Postgres + Redis + API + Web (arquivo `docker-compose.coolify.yml`).
    - (opcional) Stripe e Uazapi  
 
 4. **Domains na UI** → deixe **vazios** (rotas + Let's Encrypt nos `labels` do compose).  
-   Em **Advanced**: *Connect To Predefined Network* = ON · *Raw Compose* = OFF  
-   Depois do deploy: **Servers → Proxy → Restart Proxy** (para o ACME pegar os hosts).
+   Em **Advanced**:
+   - *Connect To Predefined Network* = **ON**
+   - *Raw Compose Deployment* = **ON** (obrigatório — com OFF o Coolify apaga os labels Traefik e o SSL não sai)
+   Depois do deploy: **Servers → Proxy → Restart Proxy**.
 
 5. **Deploy** · Auto Deploy on push = on  
 
