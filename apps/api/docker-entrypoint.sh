@@ -51,6 +51,9 @@ done
 echo "[voltta-api] Running prisma migrate deploy..."
 npx prisma migrate deploy
 
+echo "[voltta-api] Seeding roles..."
+node prisma/seed.cjs
+
 echo "[voltta-api] Starting NestJS on port ${API_PORT:-${PORT:-3001}}..."
 # nest (nodenext) emite em dist/src/main.js
 exec node dist/src/main.js

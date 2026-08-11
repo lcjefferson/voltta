@@ -1,5 +1,6 @@
 import { PrismaClient, RoleCode } from '@prisma/client';
 
+/** Prefer `node prisma/seed.cjs` in production (no ts-node). */
 const prisma = new PrismaClient();
 
 async function main() {

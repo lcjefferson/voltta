@@ -30,5 +30,7 @@ Postgres + Redis + API + Web (arquivo `docker-compose.coolify.yml`).
 - https://volttaagenda.fortallabs.com.br  
 - https://api.volttaagenda.fortallabs.com.br/health → `{"status":"ok"}`  
 
+Roles (ADMIN / BARBEIRO / RECEPCIONISTA) são seedadas automaticamente no boot da API.
+
 ## Nota
 Se você já tem um resource **Web** sozinho funcionando, pode mantê-lo **ou** trocar pelo Compose (evite dois webs no mesmo domínio).
