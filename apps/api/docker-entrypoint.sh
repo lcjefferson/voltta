@@ -3,7 +3,7 @@ set -e
 
 echo "[voltta-api] Bootstrapping..."
 
-# Monta DATABASE_URL a partir de variáveis discretas (evita quebra com senha especial no compose)
+# Monta DATABASE_URL a partir de variáveis discretas (evita quebra com senha especial)
 if [ -z "${DATABASE_URL:-}" ] && [ -n "${POSTGRES_HOST:-}" ]; then
   DATABASE_URL=$(node -e "
     const u = process.env.POSTGRES_USER || 'voltta';
@@ -22,6 +22,8 @@ if [ -z "${DATABASE_URL:-}" ]; then
   exit 1
 fi
 
+echo "[voltta-api] DB target: host=${POSTGRES_HOST:-?} port=${POSTGRES_PORT:-5432} user=${POSTGRES_USER:-?} db=${POSTGRES_DB:-?}"
+
 echo "[voltta-api] Waiting for database..."
 i=0
 until node -e "
@@ -30,11 +32,16 @@ until node -e "
   p.\$queryRaw\`SELECT 1\`
     .then(() => p.\$disconnect())
     .then(() => process.exit(0))
-    .catch(async (e) => { console.error(e.message); try { await p.\$disconnect(); } catch {} process.exit(1); });
-" 2>/dev/null; do
+    .catch(async (e) => {
+      console.error('[voltta-api] DB error:', e.message);
+      try { await p.\$disconnect(); } catch {}
+      process.exit(1);
+    });
+"; do
   i=$((i + 1))
   if [ "$i" -ge 40 ]; then
     echo "[voltta-api] ERROR: database not reachable after 40 attempts"
+    echo "[voltta-api] Check: same POSTGRES_PASSWORD as the volume was created with, and that api shares network with postgres."
     exit 1
   fi
   echo "[voltta-api] DB not ready yet ($i/40)..."

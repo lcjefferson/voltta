@@ -6,6 +6,9 @@
 #   Domains na UI: VAZIOS (rotas nos labels)
 #   Advanced: Connect To Predefined Network = ON
 #             Raw Compose Deployment = OFF
+#
+# POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB devem ser os mesmos
+# para todo o stack (senha do volume só muda se apagar o volume).
 
 services:
   postgres:
@@ -18,12 +21,10 @@ services:
     volumes:
       - voltta_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 5s
       timeout: 5s
       retries: 20
-    networks:
-      - voltta
 
   redis:
     image: redis:7-alpine
@@ -36,8 +37,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-    networks:
-      - voltta
 
   api:
     build:
@@ -58,6 +57,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-voltta}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voltta-change-me-now}
       POSTGRES_DB: ${POSTGRES_DB:-voltta}
+      # Deixe vazio para o entrypoint montar com encode da senha
       DATABASE_URL: ${DATABASE_URL:-}
       REDIS_URL: redis://redis:6379
       API_URL: ${API_URL:-https://api.volttaagenda.fortallabs.com.br}
@@ -83,7 +83,7 @@ services:
       start_period: 180s
       retries: 12
     networks:
-      - voltta
+      - default
       - coolify
     labels:
       - traefik.enable=true
@@ -124,7 +124,7 @@ services:
       start_period: 40s
       retries: 5
     networks:
-      - voltta
+      - default
       - coolify
     labels:
       - traefik.enable=true
@@ -145,7 +145,5 @@ volumes:
   voltta_redis:
 
 networks:
-  voltta:
-    driver: bridge
   coolify:
     external: true
