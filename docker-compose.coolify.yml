@@ -3,9 +3,11 @@
 # Coolify → New Resource → Docker Compose
 #   Base Directory: / (vazio)
 #   Compose file: docker-compose.coolify.yml
-# Domínios:
-#   web → volttaagenda.fortallabs.com.br  (porta 3000)
-#   api → api.volttaagenda.fortallabs.com.br (porta 3001)
+# Domínios (na UI do Coolify):
+#   web → https://volttaagenda.fortallabs.com.br:3000
+#   api → https://api.volttaagenda.fortallabs.com.br:3001
+# Advanced: Connect To Predefined Network = ON
+#           Raw Compose Deployment = OFF
 
 services:
   postgres:
@@ -18,12 +20,10 @@ services:
     volumes:
       - voltta_pg:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U voltta -d voltta"]
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
       timeout: 5s
       retries: 20
-    networks:
-      - voltta
 
   redis:
     image: redis:7-alpine
@@ -36,8 +36,6 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
-    networks:
-      - voltta
 
   api:
     build:
@@ -53,7 +51,6 @@ services:
       NODE_ENV: production
       API_PORT: "3001"
       PORT: "3001"
-      # Prefer discrete POSTGRES_* (entrypoint monta DATABASE_URL com encode)
       POSTGRES_HOST: postgres
       POSTGRES_PORT: "5432"
       POSTGRES_USER: ${POSTGRES_USER:-voltta}
@@ -75,7 +72,7 @@ services:
       WHATSAPP_PROVIDER: ${WHATSAPP_PROVIDER:-uazapi}
       UAZAPI_BASE_URL: ${UAZAPI_BASE_URL:-https://free.uazapi.com}
       UAZAPI_ADMIN_TOKEN: ${UAZAPI_ADMIN_TOKEN:-}
-    ports:
+    expose:
       - "3001"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/health"]
@@ -83,8 +80,6 @@ services:
       timeout: 5s
       start_period: 180s
       retries: 12
-    networks:
-      - voltta
 
   web:
     build:
@@ -102,7 +97,7 @@ services:
       HOSTNAME: 0.0.0.0
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://api.volttaagenda.fortallabs.com.br/v1}
       NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://volttaagenda.fortallabs.com.br}
-    ports:
+    expose:
       - "3000"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/"]
@@ -110,13 +105,7 @@ services:
       timeout: 5s
       start_period: 40s
       retries: 5
-    networks:
-      - voltta
 
 volumes:
   voltta_pg:
   voltta_redis:
-
-networks:
-  voltta:
-    driver: bridge
