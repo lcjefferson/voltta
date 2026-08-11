@@ -3,12 +3,13 @@
 # Coolify:
 #   Base Directory: /
 #   Compose file: docker-compose.coolify.yml
-#   Domains na UI: VAZIOS (rotas nos labels)
+#   Domains (UI — obrigatório para SSL Let's Encrypt):
+#     api → https://api.volttaagenda.fortallabs.com.br:3001
+#     web → https://volttaagenda.fortallabs.com.br:3000
 #   Advanced: Connect To Predefined Network = ON
 #             Raw Compose Deployment = OFF
 #
-# POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB devem ser os mesmos
-# para todo o stack (senha do volume só muda se apagar o volume).
+# POSTGRES_* iguais no stack inteiro (senha do volume só muda se apagar o volume).
 
 services:
   postgres:
@@ -57,7 +58,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-voltta}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voltta-change-me-now}
       POSTGRES_DB: ${POSTGRES_DB:-voltta}
-      # Deixe vazio para o entrypoint montar com encode da senha
       DATABASE_URL: ${DATABASE_URL:-}
       REDIS_URL: redis://redis:6379
       API_URL: ${API_URL:-https://api.volttaagenda.fortallabs.com.br}
@@ -85,19 +85,6 @@ services:
     networks:
       - default
       - coolify
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=coolify
-      - traefik.http.routers.voltta-api-http.rule=Host(`api.volttaagenda.fortallabs.com.br`)
-      - traefik.http.routers.voltta-api-http.entryPoints=http
-      - traefik.http.routers.voltta-api-http.middlewares=redirect-to-https
-      - traefik.http.routers.voltta-api-http.service=voltta-api
-      - traefik.http.routers.voltta-api-https.rule=Host(`api.volttaagenda.fortallabs.com.br`)
-      - traefik.http.routers.voltta-api-https.entryPoints=https
-      - traefik.http.routers.voltta-api-https.tls=true
-      - traefik.http.routers.voltta-api-https.tls.certresolver=letsencrypt
-      - traefik.http.routers.voltta-api-https.service=voltta-api
-      - traefik.http.services.voltta-api.loadbalancer.server.port=3001
 
   web:
     build:
@@ -126,19 +113,6 @@ services:
     networks:
       - default
       - coolify
-    labels:
-      - traefik.enable=true
-      - traefik.docker.network=coolify
-      - traefik.http.routers.voltta-web-http.rule=Host(`volttaagenda.fortallabs.com.br`)
-      - traefik.http.routers.voltta-web-http.entryPoints=http
-      - traefik.http.routers.voltta-web-http.middlewares=redirect-to-https
-      - traefik.http.routers.voltta-web-http.service=voltta-web
-      - traefik.http.routers.voltta-web-https.rule=Host(`volttaagenda.fortallabs.com.br`)
-      - traefik.http.routers.voltta-web-https.entryPoints=https
-      - traefik.http.routers.voltta-web-https.tls=true
-      - traefik.http.routers.voltta-web-https.tls.certresolver=letsencrypt
-      - traefik.http.routers.voltta-web-https.service=voltta-web
-      - traefik.http.services.voltta-web.loadbalancer.server.port=3000
 
 volumes:
   voltta_pg:

@@ -19,7 +19,9 @@ Postgres + Redis + API + Web (arquivo `docker-compose.coolify.yml`).
    - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`
    - (opcional) Stripe e Uazapi  
 
-4. **Domains na UI** → deixe **vazios** (as rotas Traefik já estão nos `labels` do `docker-compose.coolify.yml`).  
+4. **Domains** (UI — necessário para SSL Let's Encrypt):  
+   - `api` → `https://api.volttaagenda.fortallabs.com.br:3001`  
+   - `web` → `https://volttaagenda.fortallabs.com.br:3000`  
    Em **Advanced**: *Connect To Predefined Network* = ON · *Raw Compose* = OFF  
 
 5. **Deploy** · Auto Deploy on push = on  
