@@ -19,10 +19,9 @@ Postgres + Redis + API + Web (arquivo `docker-compose.coolify.yml`).
    - `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`
    - (opcional) Stripe e Uazapi  
 
-4. **Domains** (UI — necessário para SSL Let's Encrypt):  
-   - `api` → `https://api.volttaagenda.fortallabs.com.br:3001`  
-   - `web` → `https://volttaagenda.fortallabs.com.br:3000`  
+4. **Domains na UI** → deixe **vazios** (rotas + Let's Encrypt nos `labels` do compose).  
    Em **Advanced**: *Connect To Predefined Network* = ON · *Raw Compose* = OFF  
+   Depois do deploy: **Servers → Proxy → Restart Proxy** (para o ACME pegar os hosts).
 
 5. **Deploy** · Auto Deploy on push = on  
 
