@@ -39,6 +39,40 @@ export class StripeProvider implements PaymentProvider {
     return price;
   }
 
+  private async ensureCustomer(
+    stripe: Stripe,
+    company: { id: string; name: string; stripeCustomerId: string | null },
+  ): Promise<string> {
+    if (company.stripeCustomerId) {
+      try {
+        const existing = await stripe.customers.retrieve(
+          company.stripeCustomerId,
+        );
+        if (!('deleted' in existing && existing.deleted)) {
+          return existing.id;
+        }
+      } catch (error) {
+        const code =
+          error && typeof error === 'object' && 'code' in error
+            ? String((error as { code?: string }).code)
+            : '';
+        this.logger.warn(
+          `Customer Stripe inválido (${company.stripeCustomerId}): ${code || (error instanceof Error ? error.message : String(error))}. Recriando.`,
+        );
+      }
+    }
+
+    const customer = await stripe.customers.create({
+      name: company.name,
+      metadata: { companyId: company.id },
+    });
+    await this.prisma.company.update({
+      where: { id: company.id },
+      data: { stripeCustomerId: customer.id },
+    });
+    return customer.id;
+  }
+
   async checkout(
     companyId: string,
     successUrl: string,
@@ -60,18 +94,7 @@ export class StripeProvider implements PaymentProvider {
       where: { id: companyId },
     });
 
-    let customerId = company.stripeCustomerId;
-    if (!customerId) {
-      const customer = await stripe.customers.create({
-        name: company.name,
-        metadata: { companyId },
-      });
-      customerId = customer.id;
-      await this.prisma.company.update({
-        where: { id: companyId },
-        data: { stripeCustomerId: customerId },
-      });
-    }
+    const customerId = await this.ensureCustomer(stripe, company);
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
