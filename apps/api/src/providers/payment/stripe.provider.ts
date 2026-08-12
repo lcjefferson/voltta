@@ -16,7 +16,11 @@ export class StripeProvider implements PaymentProvider {
   private client(): Stripe | null {
     const key = this.config.get<string>('STRIPE_SECRET_KEY')?.trim();
     if (!key || key.includes('replace') || !key.startsWith('sk_')) {
-      this.logger.warn('STRIPE_SECRET_KEY ausente ou inválida');
+      this.logger.warn(
+        `STRIPE_SECRET_KEY ausente ou inválida (precisa começar com sk_; valor atual: ${
+          key ? `${key.slice(0, 7)}…` : 'vazio'
+        })`,
+      );
       return null;
     }
     return new Stripe(key);
@@ -25,7 +29,11 @@ export class StripeProvider implements PaymentProvider {
   private priceId(): string | null {
     const price = this.config.get<string>('STRIPE_PRICE_ID')?.trim();
     if (!price || price.includes('replace') || !price.startsWith('price_')) {
-      this.logger.warn('STRIPE_PRICE_ID ausente ou inválido');
+      this.logger.warn(
+        `STRIPE_PRICE_ID ausente ou inválido (precisa começar com price_; valor atual: ${
+          price ? `${price.slice(0, 10)}…` : 'vazio'
+        })`,
+      );
       return null;
     }
     return price;
@@ -35,10 +43,18 @@ export class StripeProvider implements PaymentProvider {
     companyId: string,
     successUrl: string,
     cancelUrl: string,
-  ): Promise<{ url: string | null }> {
+  ): Promise<{ url: string | null; error?: string }> {
     const stripe = this.client();
     const price = this.priceId();
-    if (!stripe || !price) return { url: null };
+    if (!stripe || !price) {
+      const missing: string[] = [];
+      if (!stripe) missing.push('STRIPE_SECRET_KEY (sk_...)');
+      if (!price) missing.push('STRIPE_PRICE_ID (price_...)');
+      return {
+        url: null,
+        error: `Stripe não configurado no container da API: ${missing.join(' e ')}. Salve no Coolify e faça Deploy/Restart.`,
+      };
+    }
 
     const company = await this.prisma.company.findUniqueOrThrow({
       where: { id: companyId },

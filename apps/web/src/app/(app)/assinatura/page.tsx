@@ -43,7 +43,8 @@ export default function AssinaturaPage() {
       if (data.url) window.location.href = data.url;
       else
         alert(
-          "Configure STRIPE_SECRET_KEY e STRIPE_PRICE_ID no .env da API.",
+          data.error ||
+            "Configure STRIPE_SECRET_KEY (sk_...) e STRIPE_PRICE_ID (price_...) no Coolify da API e faça Deploy.",
         );
     },
   });
