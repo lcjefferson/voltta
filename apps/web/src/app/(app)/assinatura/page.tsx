@@ -32,7 +32,7 @@ export default function AssinaturaPage() {
 
   const checkout = useMutation({
     mutationFn: () =>
-      api<{ url: string | null }>("/billing/checkout-session", {
+      api<{ url: string | null; error?: string }>("/billing/checkout-session", {
         method: "POST",
         body: JSON.stringify({
           successUrl: `${window.location.origin}/assinatura?ok=1`,
