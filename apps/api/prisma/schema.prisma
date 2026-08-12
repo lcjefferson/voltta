@@ -161,25 +161,27 @@ model RolePermission {
 }
 
 model User {
-  id             String   @id @default(uuid()) @db.Uuid
-  companyId      String   @map("company_id") @db.Uuid
-  roleId         String   @map("role_id") @db.Uuid
-  name           String
-  email          String
-  passwordHash   String   @map("password_hash")
-  isActive       Boolean  @default(true) @map("is_active")
-  isProfessional Boolean  @default(false) @map("is_professional")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  id               String    @id @default(uuid()) @db.Uuid
+  companyId        String    @map("company_id") @db.Uuid
+  roleId           String    @map("role_id") @db.Uuid
+  name             String
+  email            String
+  passwordHash     String    @map("password_hash")
+  emailVerifiedAt  DateTime? @map("email_verified_at")
+  isActive         Boolean   @default(true) @map("is_active")
+  isProfessional   Boolean   @default(false) @map("is_professional")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
-  company           Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  role              Role               @relation(fields: [roleId], references: [id])
-  appointments      Appointment[]      @relation("ProfessionalAppointments")
-  revenues          Revenue[]
-  notifications     Notification[]
-  auditLogs         AuditLog[]
-  refreshTokens     RefreshToken[]
-  passwordResetTokens PasswordResetToken[]
+  company                 Company                 @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role                    Role                    @relation(fields: [roleId], references: [id])
+  appointments            Appointment[]           @relation("ProfessionalAppointments")
+  revenues                Revenue[]
+  notifications           Notification[]
+  auditLogs               AuditLog[]
+  refreshTokens           RefreshToken[]
+  passwordResetTokens     PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
 
   @@unique([companyId, email])
   @@index([companyId])
@@ -217,6 +219,20 @@ model PasswordResetToken {
 
   @@index([tokenHash])
   @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@map("email_verification_tokens")
 }
 
 model Customer {

@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Injectable,
+  Logger,
   Module,
   NotFoundException,
   Param,
@@ -13,6 +14,7 @@ import {
   forwardRef,
   Inject,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   IsBoolean,
   IsObject,
@@ -23,7 +25,12 @@ import {
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser, CurrentUser, Roles } from '../../common/decorators/auth.decorators';
-import { Prisma, RoleCode } from '@prisma/client';
+import {
+  CompanyStatus,
+  CustomerLifecycle,
+  Prisma,
+  RoleCode,
+} from '@prisma/client';
 import { WhatsappModule, WhatsappService } from '../whatsapp/whatsapp.module';
 
 class CreateRuleDto {
@@ -94,13 +101,216 @@ function buildActions(template?: string, actions?: object) {
   ];
 }
 
+function localCalendar(now: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(now);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === type)?.value || 0);
+  return {
+    year: get('year'),
+    month: get('month'),
+    day: get('day'),
+    hour: get('hour'),
+    dateKey: `${String(get('year')).padStart(4, '0')}-${String(get('month')).padStart(2, '0')}-${String(get('day')).padStart(2, '0')}`,
+  };
+}
+
 @Injectable()
 export class AutomationsService {
+  private readonly logger = new Logger(AutomationsService.name);
+  private birthdayRunning = false;
+
   constructor(
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => WhatsappService))
     private readonly whatsapp: WhatsappService,
   ) {}
+
+  /** A cada hora: envia A5 às 08:00 no fuso da empresa. */
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleBirthdayCron() {
+    await this.runBirthdayCampaigns();
+  }
+
+  async runBirthdayCampaigns(opts?: { force?: boolean }) {
+    if (this.birthdayRunning) {
+      this.logger.warn('A5 birthday já em execução — pulando');
+      return { processed: 0, sent: 0, failed: 0, skipped: 0 };
+    }
+    this.birthdayRunning = true;
+    let processed = 0;
+    let sent = 0;
+    let failed = 0;
+    let skipped = 0;
+    try {
+      const companies = await this.prisma.company.findMany({
+        where: {
+          status: {
+            in: [
+              CompanyStatus.TRIALING,
+              CompanyStatus.ACTIVE,
+              CompanyStatus.PAST_DUE,
+            ],
+          },
+          automationRules: {
+            some: { trigger: 'A5', isActive: true },
+          },
+        },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          timezone: true,
+          automationRules: {
+            where: { trigger: 'A5', isActive: true },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+          },
+        },
+      });
+
+      const now = new Date();
+      for (const company of companies) {
+        const tz = company.timezone || 'America/Sao_Paulo';
+        const local = localCalendar(now, tz);
+        if (!opts?.force && local.hour !== 8) continue;
+
+        const rule = company.automationRules[0];
+        if (!rule) continue;
+
+        const birthdays = await this.prisma.customer.findMany({
+          where: {
+            companyId: company.id,
+            deletedAt: null,
+            lifecycleStage: CustomerLifecycle.CUSTOMER,
+            marketingOptIn: true,
+            birthDate: { not: null },
+          },
+        });
+
+        const todayBirthdays = birthdays.filter((c) => {
+          if (!c.birthDate) return false;
+          return (
+            c.birthDate.getUTCMonth() + 1 === local.month &&
+            c.birthDate.getUTCDate() === local.day
+          );
+        });
+
+        for (const customer of todayBirthdays) {
+          processed += 1;
+          const result = await this.sendBirthdayMessage({
+            company: { id: company.id, slug: company.slug },
+            rule: { id: rule.id, actions: rule.actions },
+            customer,
+            dateKey: local.dateKey,
+          });
+          if (result === 'sent') sent += 1;
+          else if (result === 'failed') failed += 1;
+          else skipped += 1;
+        }
+      }
+
+      this.logger.log(
+        `A5 birthday concluído — processados=${processed} enviados=${sent} falhas=${failed} pulados=${skipped}`,
+      );
+      return { processed, sent, failed, skipped };
+    } catch (error) {
+      this.logger.error(
+        `Falha no A5 birthday: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      throw error;
+    } finally {
+      this.birthdayRunning = false;
+    }
+  }
+
+  private async sendBirthdayMessage(input: {
+    company: { id: string; slug: string };
+    rule: { id: string; actions: Prisma.JsonValue };
+    customer: {
+      id: string;
+      name: string;
+      whatsapp: string | null;
+      phone: string | null;
+    };
+    dateKey: string;
+  }) {
+    const webUrl = (process.env.WEB_URL || 'http://localhost:3000').replace(
+      /\/$/,
+      '',
+    );
+    const vars = {
+      nome: input.customer.name,
+      link: `${webUrl}/agendar/${input.company.slug}`,
+      data: '',
+      hora: '',
+    };
+    const actions = Array.isArray(input.rule.actions)
+      ? (input.rule.actions as Array<{ type?: string; template?: string }>)
+      : [];
+    const template =
+      actions[0]?.template ||
+      'Olá {{nome}}\nFeliz aniversário! Que tal agendar um horário especial? {{link}}';
+    const text = renderTemplate(template, vars);
+    const to = input.customer.whatsapp || input.customer.phone || null;
+    const key = `A5:${input.customer.id}:${input.dateKey}`;
+
+    let executionId: string;
+    try {
+      const execution = await this.prisma.automationExecution.create({
+        data: {
+          companyId: input.company.id,
+          ruleId: input.rule.id,
+          customerId: input.customer.id,
+          idempotencyKey: key,
+          status: 'SCHEDULED',
+          scheduledFor: new Date(),
+          payload: { ...vars, text, to },
+        },
+      });
+      executionId = execution.id;
+    } catch {
+      return 'duplicate';
+    }
+
+    const claimed = await this.prisma.automationExecution.updateMany({
+      where: { id: executionId, status: 'SCHEDULED' },
+      data: { status: 'RUNNING' },
+    });
+    if (!claimed.count) return 'skipped';
+
+    if (!to) {
+      await this.prisma.automationExecution.update({
+        where: { id: executionId },
+        data: {
+          status: 'SKIPPED',
+          executedAt: new Date(),
+          errorMessage: 'sem_whatsapp',
+        },
+      });
+      return 'skipped';
+    }
+
+    const result = await this.whatsapp.trySend(input.company.id, to, text);
+    await this.prisma.automationExecution.update({
+      where: { id: executionId },
+      data: {
+        status: result.sent ? 'SUCCEEDED' : 'FAILED',
+        executedAt: new Date(),
+        errorMessage: result.sent ? null : result.reason,
+        payload: { ...vars, text, to, sendResult: result },
+      },
+    });
+    return result.sent ? 'sent' : 'failed';
+  }
 
   async scheduleForAppointmentCreated(appointmentId: string) {
     return this.schedule(appointmentId, 'A1', 0);
@@ -391,6 +601,13 @@ class AutomationsController {
   @Get('executions')
   executions(@CurrentUser() u: AuthUser) {
     return this.service.executions(u.companyId);
+  }
+
+  /** Disparo manual da A5 (aniversariantes do dia no fuso da empresa). */
+  @Roles(RoleCode.ADMIN)
+  @Post('run-birthday')
+  runBirthday() {
+    return this.service.runBirthdayCampaigns({ force: true });
   }
 }
 

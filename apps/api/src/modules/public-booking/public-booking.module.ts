@@ -9,7 +9,7 @@ import {
   Post,
   Query,
 } from '@nestjs/common';
-import { IsArray, IsDateString, IsString } from 'class-validator';
+import { IsArray, IsDateString, IsOptional, IsString } from 'class-validator';
 import { CustomerSource } from '@prisma/client';
 import { Public } from '../../common/decorators/auth.decorators';
 import {
@@ -36,6 +36,9 @@ class PublicAppointmentDto {
   name!: string;
   @IsString()
   whatsapp!: string;
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string;
   @IsString()
   professionalId!: string;
   @IsDateString()
@@ -179,6 +182,7 @@ class PublicBookingService {
       companyId: company.id,
       whatsapp,
       name: dto.name,
+      birthDate: dto.birthDate,
       source: CustomerSource.BOOKING,
     });
     return this.appointments.create(company.id, {

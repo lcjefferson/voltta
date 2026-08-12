@@ -45,6 +45,7 @@ export default function BookingPage() {
   const [startsAt, setStartsAt] = useState("");
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [birthDate, setBirthDate] = useState("");
 
   const {
     data: shop,
@@ -88,6 +89,7 @@ export default function BookingPage() {
         body: JSON.stringify({
           name,
           whatsapp,
+          birthDate: birthDate || undefined,
           professionalId,
           serviceIds: [serviceId],
           startsAt,
@@ -299,6 +301,14 @@ export default function BookingPage() {
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(e.target.value)}
                   placeholder="11999999999"
+                />
+              </div>
+              <div>
+                <Label>Data de aniversário (opcional)</Label>
+                <Input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
                 />
               </div>
               <div className="flex gap-2">

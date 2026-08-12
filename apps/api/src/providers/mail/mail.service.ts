@@ -24,7 +24,7 @@ export class MailService {
     const apiKey = this.config.get<string>('RESEND_API_KEY')?.trim();
     if (!apiKey) {
       this.logger.warn(
-        `RESEND_API_KEY ausente — e-mail não enviado (${input.logContext}) para ${input.to}`,
+        `RESEND_API_KEY ausente — e-mail não enviado (${input.logContext}) para ${input.to}. Conteúdo:\n${input.text}`,
       );
       return false;
     }
@@ -141,6 +141,42 @@ export class MailService {
       text,
       html,
       logContext: `trial-reminder-d${daysLeft}`,
+    });
+  }
+
+  async sendEmailVerification(to: string, verifyUrl: string): Promise<boolean> {
+    const subject = 'Confirme seu e-mail — VOLTTA';
+    const text = [
+      'Olá,',
+      '',
+      'Confirme seu e-mail para ativar avisos e recuperação de senha na VOLTTA:',
+      '',
+      verifyUrl,
+      '',
+      'O link é válido por 24 horas.',
+      '',
+      '— Equipe VOLTTA',
+    ].join('\n');
+    const html = `
+      <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;color:#1d1d1b">
+        <p style="font-size:12px;letter-spacing:.2em;color:#9b7a44;font-weight:700">VOLTTA™</p>
+        <h1 style="font-size:28px;margin:8px 0 16px">Confirme seu e-mail</h1>
+        <p>Falta só um passo para garantir avisos de trial e recuperação de senha.</p>
+        <p style="margin:28px 0">
+          <a href="${verifyUrl}" style="display:inline-block;background:#c4a574;color:#171715;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px">
+            CONFIRMAR E-MAIL
+          </a>
+        </p>
+        <p style="font-size:13px;color:#666">O link expira em 24 horas.</p>
+        <p style="font-size:12px;color:#999;word-break:break-all">${verifyUrl}</p>
+      </div>
+    `;
+    return this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+      logContext: 'email-verification',
     });
   }
 }

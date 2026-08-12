@@ -12,7 +12,12 @@ import { PageTitle } from "@/components/app-page";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 
-type DayHours = { open: string; close: string } | null;
+type DayBreak = { start: string; end: string };
+type DayHours = {
+  open: string;
+  close: string;
+  break?: DayBreak | null;
+} | null;
 type BusinessHours = {
   slotIntervalMinutes: number;
   days: Record<string, DayHours>;
@@ -29,6 +34,7 @@ type Profile = {
   id: string;
   name: string;
   email: string;
+  emailVerified?: boolean;
   role: string;
   companyId: string;
   companyName: string;
@@ -146,6 +152,7 @@ export default function ConfiguracoesPage() {
           id: data.id,
           name: data.name,
           email: data.email,
+          emailVerified: data.emailVerified,
           role: data.role,
           companyId: data.companyId,
           companyName: data.companyName,
@@ -158,6 +165,7 @@ export default function ConfiguracoesPage() {
             ...authUser,
             name: data.name,
             email: data.email,
+            emailVerified: data.emailVerified,
           }),
         );
       }
@@ -182,14 +190,68 @@ export default function ConfiguracoesPage() {
     setHours((prev) => {
       const current = prev.days[day];
       if (!current) return prev;
+      const next = { ...current, [field]: value };
+      // Se a pausa ficar inválida após mudar o expediente, remove.
+      if (next.break) {
+        const openM = toMinutes(next.open);
+        const closeM = toMinutes(next.close);
+        const startM = toMinutes(next.break.start);
+        const endM = toMinutes(next.break.end);
+        if (!(startM < endM && startM >= openM && endM <= closeM)) {
+          next.break = null;
+        }
+      }
       return {
         ...prev,
         days: {
           ...prev.days,
-          [day]: { ...current, [field]: value },
+          [day]: next,
         },
       };
     });
+  }
+
+  function toggleLunch(day: string, enabled: boolean) {
+    setHours((prev) => {
+      const current = prev.days[day];
+      if (!current) return prev;
+      return {
+        ...prev,
+        days: {
+          ...prev.days,
+          [day]: {
+            ...current,
+            break: enabled ? { start: "12:00", end: "13:00" } : null,
+          },
+        },
+      };
+    });
+  }
+
+  function setLunchTime(
+    day: string,
+    field: "start" | "end",
+    value: string,
+  ) {
+    setHours((prev) => {
+      const current = prev.days[day];
+      if (!current?.break) return prev;
+      return {
+        ...prev,
+        days: {
+          ...prev.days,
+          [day]: {
+            ...current,
+            break: { ...current.break, [field]: value },
+          },
+        },
+      };
+    });
+  }
+
+  function toMinutes(hhmm: string) {
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
   }
 
   return (
@@ -283,6 +345,7 @@ export default function ConfiguracoesPage() {
               <h3 className="font-bold">Horário de funcionamento</h3>
               <p className="mt-1 text-sm text-neutral-500">
                 Usado no link público para mostrar só os horários disponíveis.
+                A pausa de almoço remove os slots desse intervalo.
               </p>
 
               <div className="mt-4">
@@ -327,26 +390,73 @@ export default function ConfiguracoesPage() {
                         )}
                       </div>
                       {open && day && (
-                        <div className="mt-3 grid grid-cols-2 gap-3">
-                          <div>
-                            <Label>Abre</Label>
-                            <Input
-                              type="time"
-                              value={day.open}
-                              onChange={(e) =>
-                                setDayTime(key, "open", e.target.value)
-                              }
-                            />
+                        <div className="mt-3 space-y-3">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <Label>Abre</Label>
+                              <Input
+                                type="time"
+                                value={day.open}
+                                onChange={(e) =>
+                                  setDayTime(key, "open", e.target.value)
+                                }
+                              />
+                            </div>
+                            <div>
+                              <Label>Fecha</Label>
+                              <Input
+                                type="time"
+                                value={day.close}
+                                onChange={(e) =>
+                                  setDayTime(key, "close", e.target.value)
+                                }
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <Label>Fecha</Label>
-                            <Input
-                              type="time"
-                              value={day.close}
-                              onChange={(e) =>
-                                setDayTime(key, "close", e.target.value)
-                              }
-                            />
+
+                          <div className="rounded-md border border-dashed border-neutral-300 bg-white p-3">
+                            <label className="flex items-center gap-2 text-sm font-semibold">
+                              <input
+                                type="checkbox"
+                                checked={!!day.break}
+                                onChange={(e) =>
+                                  toggleLunch(key, e.target.checked)
+                                }
+                              />
+                              Pausa para almoço
+                            </label>
+                            {day.break ? (
+                              <div className="mt-3 grid grid-cols-2 gap-3">
+                                <div>
+                                  <Label>Início</Label>
+                                  <Input
+                                    type="time"
+                                    value={day.break.start}
+                                    onChange={(e) =>
+                                      setLunchTime(
+                                        key,
+                                        "start",
+                                        e.target.value,
+                                      )
+                                    }
+                                  />
+                                </div>
+                                <div>
+                                  <Label>Fim</Label>
+                                  <Input
+                                    type="time"
+                                    value={day.break.end}
+                                    onChange={(e) =>
+                                      setLunchTime(key, "end", e.target.value)
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <p className="mt-2 text-xs text-neutral-500">
+                                Sem pausa — agenda contínua no dia.
+                              </p>
+                            )}
                           </div>
                         </div>
                       )}

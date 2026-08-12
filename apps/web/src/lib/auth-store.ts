@@ -6,6 +6,7 @@ type User = {
   id?: string;
   name: string;
   email: string;
+  emailVerified?: boolean;
   role?: string;
   companyId?: string;
   companyName?: string;
@@ -19,6 +20,7 @@ type AuthState = {
   hydrated: boolean;
   hydrate: () => void;
   setAuth: (accessToken: string, refreshToken: string, user: User) => void;
+  patchUser: (partial: Partial<User>) => void;
   clearAuth: () => void;
 };
 
@@ -32,7 +34,7 @@ function readUser(): User | null {
   }
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   accessToken: null,
   refreshToken: null,
   user: null,
@@ -51,6 +53,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.setItem("voltta_refresh_token", refreshToken);
     localStorage.setItem("voltta_user", JSON.stringify(user));
     set({ accessToken, refreshToken, user, hydrated: true });
+  },
+  patchUser: (partial) => {
+    const current = get().user;
+    if (!current) return;
+    const next = { ...current, ...partial };
+    localStorage.setItem("voltta_user", JSON.stringify(next));
+    set({ user: next });
   },
   clearAuth: () => {
     localStorage.removeItem("voltta_access_token");

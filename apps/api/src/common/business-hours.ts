@@ -1,4 +1,11 @@
-export type DayHours = { open: string; close: string } | null;
+export type DayBreak = { start: string; end: string };
+
+export type DayHours = {
+  open: string;
+  close: string;
+  /** Pausa de almoço (opcional), dentro do horário de funcionamento. */
+  break?: DayBreak | null;
+} | null;
 
 export type BusinessHours = {
   slotIntervalMinutes: number;
@@ -19,6 +26,20 @@ export const DEFAULT_BUSINESS_HOURS: BusinessHours = {
 };
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+function isValidBreak(
+  open: string,
+  close: string,
+  dayBreak: DayBreak | null | undefined,
+): dayBreak is DayBreak {
+  if (!dayBreak) return false;
+  if (!TIME_RE.test(dayBreak.start) || !TIME_RE.test(dayBreak.end)) return false;
+  const openM = toMinutes(open);
+  const closeM = toMinutes(close);
+  const startM = toMinutes(dayBreak.start);
+  const endM = toMinutes(dayBreak.end);
+  return startM < endM && startM >= openM && endM <= closeM;
+}
 
 export function normalizeBusinessHours(raw: unknown): BusinessHours {
   const base: BusinessHours = {
@@ -49,7 +70,21 @@ export function normalizeBusinessHours(raw: unknown): BusinessHours {
         TIME_RE.test(value.close) &&
         toMinutes(value.open) < toMinutes(value.close)
       ) {
-        base.days[key] = { open: value.open, close: value.close };
+        const day: NonNullable<DayHours> = {
+          open: value.open,
+          close: value.close,
+        };
+        const rawBreak =
+          value.break &&
+          typeof value.break === 'object' &&
+          typeof value.break.start === 'string' &&
+          typeof value.break.end === 'string'
+            ? { start: value.break.start, end: value.break.end }
+            : null;
+        if (isValidBreak(value.open, value.close, rawBreak)) {
+          day.break = rawBreak;
+        }
+        base.days[key] = day;
       }
     }
   }
@@ -100,6 +135,17 @@ export function listOpenDates(
   return out;
 }
 
+function overlapsBreak(
+  slotStartMin: number,
+  slotEndMin: number,
+  dayBreak: DayBreak | null | undefined,
+) {
+  if (!dayBreak) return false;
+  const bStart = toMinutes(dayBreak.start);
+  const bEnd = toMinutes(dayBreak.end);
+  return slotStartMin < bEnd && slotEndMin > bStart;
+}
+
 export function buildSlots(params: {
   date: string;
   hours: BusinessHours;
@@ -119,6 +165,7 @@ export function buildSlots(params: {
   const slots: { startsAt: string; label: string }[] = [];
 
   for (let t = open; t + durationMinutes <= close; t += step) {
+    if (overlapsBreak(t, t + durationMinutes, day.break)) continue;
     const label = fromMinutes(t);
     const startsAt = wallClockToDate(date, label);
     const endsAt = new Date(startsAt.getTime() + durationMinutes * 60000);

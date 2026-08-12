@@ -41,6 +41,13 @@ Roles (ADMIN / BARBEIRO / RECEPCIONISTA) são seedadas automaticamente no boot d
 
 Sem `RESEND_API_KEY`, o link de reset só aparece nos **logs da API**.
 
+## Confirmação de e-mail
+No cadastro (e ao trocar o e-mail em Configurações), a API envia link `/verify-email?token=...`.
+
+- Contas antigas já entram como confirmadas (migration).  
+- Sem confirmação, o app **não bloqueia** — só mostra um **banner** com “Reenviar e-mail”.  
+- Mesma `RESEND_API_KEY` / `MAIL_FROM`; sem a key, o link aparece nos logs da API.
+
 ## Lembrete de fim de trial
 Com `RESEND_API_KEY` configurada, a API envia e-mail automático ao ADMIN:
 - **3 dias** antes do fim do trial  

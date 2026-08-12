@@ -48,6 +48,30 @@ class CustomerDto {
   marketingOptIn?: boolean;
 }
 
+class UpdateCustomerDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+  @IsOptional()
+  @IsString()
+  phone?: string;
+  @IsOptional()
+  @IsString()
+  whatsapp?: string;
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string;
+  @IsOptional()
+  @IsString()
+  notes?: string;
+  @IsOptional()
+  @IsBoolean()
+  marketingOptIn?: boolean;
+}
+
 class ListCustomersDto extends PaginationDto {
   @IsOptional()
   @IsEnum(CustomerLifecycle)
@@ -122,13 +146,28 @@ export class CustomersService {
     return x;
   }
 
-  async update(companyId: string, id: string, dto: CustomerDto) {
+  async update(companyId: string, id: string, dto: UpdateCustomerDto) {
     await this.one(companyId, id);
+    const whatsapp =
+      dto.whatsapp !== undefined || dto.phone !== undefined
+        ? normalizePhone(dto.whatsapp || dto.phone) || dto.whatsapp
+        : undefined;
     return this.prisma.customer.update({
       where: { id },
       data: {
-        ...dto,
-        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+        ...(dto.name !== undefined ? { name: dto.name } : {}),
+        ...(dto.phone !== undefined ? { phone: dto.phone || whatsapp } : {}),
+        ...(whatsapp !== undefined ? { whatsapp } : {}),
+        ...(dto.email !== undefined ? { email: dto.email } : {}),
+        ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
+        ...(dto.marketingOptIn !== undefined
+          ? { marketingOptIn: dto.marketingOptIn }
+          : {}),
+        ...(dto.birthDate !== undefined
+          ? {
+              birthDate: dto.birthDate ? new Date(dto.birthDate) : null,
+            }
+          : {}),
       },
     });
   }
@@ -214,8 +253,10 @@ export class CustomersService {
     customerId?: string;
     whatsapp?: string;
     name?: string;
+    birthDate?: string;
     source?: CustomerSource;
   }) {
+    const birthDate = input.birthDate ? new Date(input.birthDate) : undefined;
     let customer = input.customerId
       ? await this.prisma.customer.findFirst({
           where: {
@@ -244,6 +285,7 @@ export class CustomersService {
           name: input.name || `Cliente ${whatsapp.slice(-4)}`,
           whatsapp,
           phone: whatsapp,
+          birthDate,
           lifecycleStage: CustomerLifecycle.CUSTOMER,
           source: input.source || CustomerSource.BOOKING,
           convertedAt: new Date(),
@@ -262,6 +304,7 @@ export class CustomersService {
           name: input.name && customer.name.startsWith('Lead ')
             ? input.name
             : customer.name,
+          ...(birthDate && !customer.birthDate ? { birthDate } : {}),
         },
       });
     }
@@ -274,6 +317,7 @@ export class CustomersService {
         name: input.name && customer.name.startsWith('Lead ')
           ? input.name
           : customer.name,
+        ...(birthDate && !customer.birthDate ? { birthDate } : {}),
         source:
           customer.source === CustomerSource.WHATSAPP
             ? CustomerSource.WHATSAPP
@@ -306,7 +350,7 @@ class CustomersController {
   update(
     @CurrentUser() u: AuthUser,
     @Param('id') id: string,
-    @Body() dto: CustomerDto,
+    @Body() dto: UpdateCustomerDto,
   ) {
     return this.service.update(u.companyId, id, dto);
   }

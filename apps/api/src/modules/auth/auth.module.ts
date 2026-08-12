@@ -20,6 +20,7 @@ class RefreshDto { @IsString() refreshToken!: string; }
 class ForgotDto { @IsEmail() email!: string; }
 class ResetDto { @IsString() token!: string; @IsString() @MinLength(6) password!: string; }
 class ChangeDto { @IsString() currentPassword!: string; @IsString() @MinLength(6) newPassword!: string; }
+class VerifyEmailDto { @IsString() token!: string; }
 class UpdateProfileDto {
   @IsOptional()
   @IsString()
@@ -73,12 +74,81 @@ export class AuthService {
     private mail: MailService,
   ) {}
   private slug(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
-  private async tokens(user: { id: string; companyId: string; email: string; role: { code: RoleCode }; company: { name: string; slug: string } }) {
-    const payload: AuthUser = { userId: user.id, companyId: user.companyId, email: user.email, role: user.role.code };
-    const accessToken = await this.jwt.signAsync(payload, { secret: this.config.get<string>('JWT_ACCESS_SECRET') || 'dev-access-secret', expiresIn: '12h' });
-    const refreshToken = await this.jwt.signAsync(payload, { secret: this.config.get<string>('JWT_REFRESH_SECRET') || 'dev-refresh-secret', expiresIn: '30d' });
-    await this.prisma.refreshToken.create({ data: { companyId: user.companyId, userId: user.id, tokenHash: await bcrypt.hash(refreshToken, 10), expiresAt: new Date(Date.now() + 30 * 86400000) } });
-    return { accessToken, refreshToken, user: { id: user.id, name: (user as unknown as { name: string }).name, email: user.email, role: user.role.code, companyId: user.companyId, companyName: user.company.name, companySlug: user.company.slug } };
+  private async tokens(user: {
+    id: string;
+    name?: string;
+    companyId: string;
+    email: string;
+    emailVerifiedAt?: Date | null;
+    role: { code: RoleCode };
+    company: { name: string; slug: string };
+  }) {
+    const payload: AuthUser = {
+      userId: user.id,
+      companyId: user.companyId,
+      email: user.email,
+      role: user.role.code,
+    };
+    const accessToken = await this.jwt.signAsync(payload, {
+      secret: this.config.get<string>('JWT_ACCESS_SECRET') || 'dev-access-secret',
+      expiresIn: '12h',
+    });
+    const refreshToken = await this.jwt.signAsync(payload, {
+      secret: this.config.get<string>('JWT_REFRESH_SECRET') || 'dev-refresh-secret',
+      expiresIn: '30d',
+    });
+    await this.prisma.refreshToken.create({
+      data: {
+        companyId: user.companyId,
+        userId: user.id,
+        tokenHash: await bcrypt.hash(refreshToken, 10),
+        expiresAt: new Date(Date.now() + 30 * 86400000),
+      },
+    });
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name || (user as unknown as { name: string }).name,
+        email: user.email,
+        emailVerified: Boolean(user.emailVerifiedAt),
+        role: user.role.code,
+        companyId: user.companyId,
+        companyName: user.company.name,
+        companySlug: user.company.slug,
+      },
+    };
+  }
+
+  private webUrl() {
+    return (this.config.get<string>('WEB_URL') || 'http://localhost:3000').replace(
+      /\/$/,
+      '',
+    );
+  }
+
+  private async issueEmailVerification(user: { id: string; email: string }) {
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId: user.id, usedAt: null },
+      data: { usedAt: new Date() },
+    });
+    const token = await this.jwt.signAsync(
+      { userId: user.id, purpose: 'email-verification' },
+      {
+        secret: this.config.get<string>('JWT_REFRESH_SECRET') || 'dev-refresh-secret',
+        expiresIn: '24h',
+      },
+    );
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash: await bcrypt.hash(token, 10),
+        expiresAt: new Date(Date.now() + 24 * 3600000),
+      },
+    });
+    const verifyUrl = `${this.webUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+    await this.mail.sendEmailVerification(user.email, verifyUrl);
   }
   async signup(dto: SignupDto) {
     const base = this.slug(dto.companyName) || 'empresa';
@@ -108,7 +178,15 @@ export class AuthService {
       include: { users: { include: { role: true } } },
     });
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: company.users[0].id }, include: { role: true, company: true } });
-    return this.tokens(user);
+    const result = await this.tokens(user);
+    void this.issueEmailVerification(user).catch((error) => {
+      this.logger.error(
+        `Falha ao enviar verificação de e-mail no signup: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    });
+    return result;
   }
   async login(dto: LoginDto) {
     const user = await this.prisma.user.findFirst({ where: { email: dto.email.toLowerCase(), isActive: true, company: { status: { not: 'SUSPENDED' } } }, include: { role: true, company: true }, orderBy: { createdAt: 'asc' } });
@@ -211,6 +289,7 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      emailVerified: Boolean(user.emailVerifiedAt),
       role: user.role.code,
       companyId: user.companyId,
       companyName: user.company.name,
@@ -255,21 +334,72 @@ export class AuthService {
       where: { id: userId },
       data: {
         ...(nextName ? { name: nextName } : {}),
-        ...(emailChanging ? { email: nextEmail } : {}),
+        ...(emailChanging
+          ? { email: nextEmail, emailVerifiedAt: null }
+          : {}),
       },
       include: { role: true, company: true },
     });
+
+    if (emailChanging) {
+      void this.issueEmailVerification(updated).catch((error) => {
+        this.logger.error(
+          `Falha ao reenviar verificação após troca de e-mail: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+    }
 
     return {
       id: updated.id,
       name: updated.name,
       email: updated.email,
+      emailVerified: Boolean(updated.emailVerifiedAt),
       role: updated.role.code,
       companyId: updated.companyId,
       companyName: updated.company.name,
       companySlug: updated.company.slug,
       companyPhone: updated.company.phone,
     };
+  }
+
+  async verifyEmail(token: string) {
+    const items = await this.prisma.emailVerificationToken.findMany({
+      where: { usedAt: null, expiresAt: { gt: new Date() } },
+    });
+    const found = (
+      await Promise.all(
+        items.map(async (x) => ({
+          x,
+          ok: await bcrypt.compare(token, x.tokenHash),
+        })),
+      )
+    ).find((x) => x.ok);
+    if (!found) throw new BadRequestException('Token inválido ou expirado');
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: found.x.userId },
+        data: { emailVerifiedAt: new Date() },
+      }),
+      this.prisma.emailVerificationToken.update({
+        where: { id: found.x.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+    return { message: 'E-mail confirmado com sucesso' };
+  }
+
+  async resendVerification(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+    });
+    if (user.emailVerifiedAt) {
+      return { message: 'E-mail já confirmado' };
+    }
+    await this.issueEmailVerification(user);
+    return { message: 'Enviamos um novo link de confirmação' };
   }
 }
 const defaultRules = () => [
@@ -342,6 +472,8 @@ export class AuthController {
   @Post('change-password') change(@CurrentUser() user: AuthUser, @Body() dto: ChangeDto) { return this.service.change(user.userId, dto); }
   @Get('me') me(@CurrentUser() user: AuthUser) { return this.service.me(user.userId); }
   @Patch('me') updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) { return this.service.updateProfile(user.userId, dto); }
+  @Public() @Post('verify-email') verifyEmail(@Body() dto: VerifyEmailDto) { return this.service.verifyEmail(dto.token); }
+  @Post('resend-verification') resendVerification(@CurrentUser() user: AuthUser) { return this.service.resendVerification(user.userId); }
 }
 @Module({ imports: [PrismaModule, PassportModule, JwtModule.register({}), MailModule], controllers: [AuthController], providers: [AuthService, JwtStrategy], exports: [AuthService] })
 export class AuthModule {}

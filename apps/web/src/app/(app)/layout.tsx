@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
+import { EmailVerificationBanner } from "@/components/email-verification-banner";
 
 const nav = [
   ["Dashboard", "/dashboard", LayoutDashboard],
@@ -162,6 +163,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
+      <EmailVerificationBanner />
       <header className="flex h-16 items-center justify-between border-b bg-white px-4 sm:px-5 lg:ml-64">
         <div className="flex items-center gap-2">
           <button
