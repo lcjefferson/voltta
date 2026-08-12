@@ -1,11 +1,99 @@
 "use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
+const schema = z.object({
+  email: z.string().email("Informe um e-mail válido"),
+});
+type Values = z.infer<typeof schema>;
+
 export default function ForgotPasswordPage() {
-  const { register, handleSubmit } = useForm<{ email: string }>();
-  return <main className="flex min-h-screen items-center justify-center bg-[#f7f6f2] p-6"><div className="w-full max-w-sm"><Link href="/" className="font-display text-3xl tracking-widest">VOLTTA™</Link><p className="mt-12 text-xs font-bold tracking-[.2em] text-[#9b7a44]">RECUPERAR ACESSO</p><h1 className="mt-2 font-display text-5xl">NOVA SENHA.</h1><p className="mt-3 text-sm text-neutral-600">Enviaremos as instruções para o seu e-mail.</p><form onSubmit={handleSubmit(() => alert("Se o e-mail estiver cadastrado, você receberá as instruções."))} className="mt-8"><Label>E-mail</Label><Input type="email" {...register("email", { required: true })} placeholder="voce@barbearia.com" /><Button className="mt-5 w-full">ENVIAR INSTRUÇÕES</Button></form><Link href="/login" className="mt-6 block text-center text-sm font-bold text-[#9b7a44]">Voltar para entrar</Link></div></main>;
+  const [done, setDone] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<Values>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "" },
+  });
+
+  async function submit(values: Values) {
+    try {
+      await api<{ message: string }>("/auth/forgot-password", {
+        method: "POST",
+        body: JSON.stringify({ email: values.email }),
+      });
+      setDone(true);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Tente novamente.");
+    }
+  }
+
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f2] p-6">
+      <div className="w-full max-w-sm">
+        <Link href="/" className="font-display text-3xl tracking-widest">
+          VOLTTA™
+        </Link>
+        <p className="mt-12 text-xs font-bold tracking-[.2em] text-[#9b7a44]">
+          RECUPERAR ACESSO
+        </p>
+        <h1 className="mt-2 font-display text-5xl">NOVA SENHA.</h1>
+        {done ? (
+          <div className="mt-8 space-y-4">
+            <p className="text-sm text-neutral-600">
+              Se o e-mail estiver cadastrado, você receberá as instruções em
+              instantes. Verifique também a caixa de spam.
+            </p>
+            <Link
+              href="/login"
+              className="block text-center text-sm font-bold text-[#9b7a44]"
+            >
+              Voltar para entrar
+            </Link>
+          </div>
+        ) : (
+          <>
+            <p className="mt-3 text-sm text-neutral-600">
+              Enviaremos as instruções para o seu e-mail.
+            </p>
+            <form onSubmit={handleSubmit(submit)} className="mt-8 space-y-4">
+              <div>
+                <Label>E-mail</Label>
+                <Input
+                  type="email"
+                  {...register("email")}
+                  placeholder="voce@barbearia.com"
+                  autoComplete="email"
+                />
+                {errors.email && (
+                  <p className="mt-1 text-xs text-red-600">
+                    {errors.email.message}
+                  </p>
+                )}
+              </div>
+              <Button disabled={isSubmitting} className="w-full">
+                {isSubmitting ? "ENVIANDO..." : "ENVIAR INSTRUÇÕES"}
+              </Button>
+            </form>
+            <Link
+              href="/login"
+              className="mt-6 block text-center text-sm font-bold text-[#9b7a44]"
+            >
+              Voltar para entrar
+            </Link>
+          </>
+        )}
+      </div>
+    </main>
+  );
 }

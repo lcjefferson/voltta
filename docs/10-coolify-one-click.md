@@ -32,5 +32,14 @@ Postgres + Redis + API + Web (arquivo `docker-compose.coolify.yml`).
 
 Roles (ADMIN / BARBEIRO / RECEPCIONISTA) são seedadas automaticamente no boot da API.
 
+## Recuperação de senha
+1. Crie conta em [Resend](https://resend.com) e pegue a API key  
+2. No Coolify, adicione:
+   - `RESEND_API_KEY=re_...`
+   - `MAIL_FROM=VOLTTA <seu@dominio-verificado.com>` (em teste pode usar `onboarding@resend.dev`)  
+3. Save → Deploy  
+
+Sem `RESEND_API_KEY`, o link de reset só aparece nos **logs da API**.
+
 ## Nota
 Se você já tem um resource **Web** sozinho funcionando, pode mantê-lo **ou** trocar pelo Compose (evite dois webs no mesmo domínio).

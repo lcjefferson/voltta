@@ -1,4 +1,4 @@
-import { Body, Controller, Injectable, Module, Post, UnauthorizedException, BadRequestException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Injectable, Module, Post, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -11,6 +11,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Public, CurrentUser, AuthUser } from '../../common/decorators/auth.decorators';
 import { DEFAULT_BUSINESS_HOURS } from '../../common/business-hours';
+import { MailService } from '../../providers/mail/mail.service';
 
 class SignupDto { @IsString() name!: string; @IsEmail() email!: string; @IsString() @MinLength(6) password!: string; @IsString() companyName!: string; }
 class LoginDto { @IsEmail() email!: string; @IsString() password!: string; }
@@ -49,7 +50,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
 @Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService, private jwt: JwtService, private config: ConfigService) {}
+  private readonly logger = new Logger(AuthService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private jwt: JwtService,
+    private config: ConfigService,
+    private mail: MailService,
+  ) {}
   private slug(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
   private async tokens(user: { id: string; companyId: string; email: string; role: { code: RoleCode }; company: { name: string; slug: string } }) {
     const payload: AuthUser = { userId: user.id, companyId: user.companyId, email: user.email, role: user.role.code };
@@ -103,8 +111,71 @@ export class AuthService {
     } catch { throw new UnauthorizedException('Token de atualização inválido'); }
   }
   async logout(userId: string) { await this.prisma.refreshToken.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } }); return { message: 'Sessão encerrada' }; }
-  async forgot(email: string) { const user = await this.prisma.user.findFirst({ where: { email: email.toLowerCase(), isActive: true } }); if (user) { const token = await this.jwt.signAsync({ userId: user.id }, { secret: this.config.get<string>('JWT_REFRESH_SECRET') || 'dev-refresh-secret', expiresIn: '1h' }); await this.prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash: await bcrypt.hash(token, 10), expiresAt: new Date(Date.now() + 3600000) } }); console.log(`Redefinição de senha: ${this.config.get('WEB_URL') || 'http://localhost:3000'}/reset-password?token=${token}`); } return { message: 'Se o e-mail existir, enviaremos as instruções.' }; }
-  async reset(dto: ResetDto) { const items = await this.prisma.passwordResetToken.findMany({ where: { usedAt: null, expiresAt: { gt: new Date() } } }); const found = (await Promise.all(items.map(async (x) => ({ x, ok: await bcrypt.compare(dto.token, x.tokenHash) })))).find((x) => x.ok); if (!found) throw new BadRequestException('Token inválido ou expirado'); await this.prisma.$transaction([this.prisma.user.update({ where: { id: found.x.userId }, data: { passwordHash: await bcrypt.hash(dto.password, 12) } }), this.prisma.passwordResetToken.update({ where: { id: found.x.id }, data: { usedAt: new Date() } })]); return { message: 'Senha alterada com sucesso' }; }
+
+  async forgot(email: string) {
+    const user = await this.prisma.user.findFirst({
+      where: { email: email.toLowerCase(), isActive: true },
+    });
+    if (user) {
+      const token = await this.jwt.signAsync(
+        { userId: user.id, purpose: 'password-reset' },
+        {
+          secret: this.config.get<string>('JWT_REFRESH_SECRET') || 'dev-refresh-secret',
+          expiresIn: '1h',
+        },
+      );
+      await this.prisma.passwordResetToken.updateMany({
+        where: { userId: user.id, usedAt: null },
+        data: { usedAt: new Date() },
+      });
+      await this.prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: await bcrypt.hash(token, 10),
+          expiresAt: new Date(Date.now() + 3600000),
+        },
+      });
+      const webUrl = (
+        this.config.get<string>('WEB_URL') || 'http://localhost:3000'
+      ).replace(/\/$/, '');
+      const resetUrl = `${webUrl}/reset-password?token=${encodeURIComponent(token)}`;
+      await this.mail.sendPasswordReset(user.email, resetUrl);
+    }
+    return { message: 'Se o e-mail existir, enviaremos as instruções.' };
+  }
+
+  async reset(dto: ResetDto) {
+    const items = await this.prisma.passwordResetToken.findMany({
+      where: { usedAt: null, expiresAt: { gt: new Date() } },
+    });
+    const found = (
+      await Promise.all(
+        items.map(async (x) => ({
+          x,
+          ok: await bcrypt.compare(dto.token, x.tokenHash),
+        })),
+      )
+    ).find((x) => x.ok);
+    if (!found) throw new BadRequestException('Token inválido ou expirado');
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: found.x.userId },
+        data: { passwordHash: await bcrypt.hash(dto.password, 12) },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: found.x.id },
+        data: { usedAt: new Date() },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: found.x.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+    this.logger.log(`Senha redefinida para user ${found.x.userId}`);
+    return { message: 'Senha alterada com sucesso' };
+  }
+
   async change(userId: string, dto: ChangeDto) { const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } }); if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) throw new BadRequestException('Senha atual inválida'); await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 12) } }); return { message: 'Senha alterada com sucesso' }; }
 }
 const defaultRules = () => [
@@ -176,5 +247,5 @@ export class AuthController {
   @Public() @Post('reset-password') reset(@Body() dto: ResetDto) { return this.service.reset(dto); }
   @Post('change-password') change(@CurrentUser() user: AuthUser, @Body() dto: ChangeDto) { return this.service.change(user.userId, dto); }
 }
-@Module({ imports: [PrismaModule, PassportModule, JwtModule.register({})], controllers: [AuthController], providers: [AuthService, JwtStrategy], exports: [AuthService] })
+@Module({ imports: [PrismaModule, PassportModule, JwtModule.register({})], controllers: [AuthController], providers: [AuthService, JwtStrategy, MailService], exports: [AuthService] })
 export class AuthModule {}
