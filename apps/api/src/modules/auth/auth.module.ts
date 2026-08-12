@@ -1,4 +1,4 @@
-import { Body, Controller, Injectable, Module, Post, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
+import { Body, Controller, Get, Injectable, Module, Patch, Post, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
@@ -19,6 +19,19 @@ class RefreshDto { @IsString() refreshToken!: string; }
 class ForgotDto { @IsEmail() email!: string; }
 class ResetDto { @IsString() token!: string; @IsString() @MinLength(6) password!: string; }
 class ChangeDto { @IsString() currentPassword!: string; @IsString() @MinLength(6) newPassword!: string; }
+class UpdateProfileDto {
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  currentPassword?: string;
+}
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -176,7 +189,87 @@ export class AuthService {
     return { message: 'Senha alterada com sucesso' };
   }
 
-  async change(userId: string, dto: ChangeDto) { const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } }); if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) throw new BadRequestException('Senha atual inválida'); await this.prisma.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(dto.newPassword, 12) } }); return { message: 'Senha alterada com sucesso' }; }
+  async change(userId: string, dto: ChangeDto) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
+      throw new BadRequestException('Senha atual inválida');
+    }
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash: await bcrypt.hash(dto.newPassword, 12) },
+    });
+    return { message: 'Senha alterada com sucesso' };
+  }
+
+  async me(userId: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { role: true, company: true },
+    });
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role.code,
+      companyId: user.companyId,
+      companyName: user.company.name,
+      companySlug: user.company.slug,
+      companyPhone: user.company.phone,
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: { role: true, company: true },
+    });
+
+    const nextName = dto.name?.trim();
+    const nextEmail = dto.email?.toLowerCase().trim();
+    const emailChanging =
+      !!nextEmail && nextEmail !== user.email.toLowerCase();
+
+    if (emailChanging) {
+      if (!dto.currentPassword) {
+        throw new BadRequestException(
+          'Informe a senha atual para alterar o e-mail',
+        );
+      }
+      if (!(await bcrypt.compare(dto.currentPassword, user.passwordHash))) {
+        throw new BadRequestException('Senha atual inválida');
+      }
+      const taken = await this.prisma.user.findFirst({
+        where: {
+          email: nextEmail,
+          id: { not: userId },
+          isActive: true,
+        },
+      });
+      if (taken) {
+        throw new BadRequestException('Este e-mail já está em uso');
+      }
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(nextName ? { name: nextName } : {}),
+        ...(emailChanging ? { email: nextEmail } : {}),
+      },
+      include: { role: true, company: true },
+    });
+
+    return {
+      id: updated.id,
+      name: updated.name,
+      email: updated.email,
+      role: updated.role.code,
+      companyId: updated.companyId,
+      companyName: updated.company.name,
+      companySlug: updated.company.slug,
+      companyPhone: updated.company.phone,
+    };
+  }
 }
 const defaultRules = () => [
   {
@@ -246,6 +339,8 @@ export class AuthController {
   @Public() @Post('forgot-password') forgot(@Body() dto: ForgotDto) { return this.service.forgot(dto.email); }
   @Public() @Post('reset-password') reset(@Body() dto: ResetDto) { return this.service.reset(dto); }
   @Post('change-password') change(@CurrentUser() user: AuthUser, @Body() dto: ChangeDto) { return this.service.change(user.userId, dto); }
+  @Get('me') me(@CurrentUser() user: AuthUser) { return this.service.me(user.userId); }
+  @Patch('me') updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) { return this.service.updateProfile(user.userId, dto); }
 }
 @Module({ imports: [PrismaModule, PassportModule, JwtModule.register({})], controllers: [AuthController], providers: [AuthService, JwtStrategy, MailService], exports: [AuthService] })
 export class AuthModule {}

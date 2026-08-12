@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/app-page";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/lib/auth-store";
 
 type DayHours = { open: string; close: string } | null;
 type BusinessHours = {
@@ -22,6 +23,17 @@ type Company = {
   slug: string;
   phone?: string | null;
   businessHours: BusinessHours;
+};
+
+type Profile = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  companyId: string;
+  companyName: string;
+  companySlug: string;
+  companyPhone?: string | null;
 };
 
 const DAY_LABELS = [
@@ -49,9 +61,19 @@ const DEFAULT_HOURS: BusinessHours = {
 
 export default function ConfiguracoesPage() {
   const qc = useQueryClient();
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const refreshToken = useAuthStore((s) => s.refreshToken);
+  const authUser = useAuthStore((s) => s.user);
+
   const { data: company } = useQuery({
     queryKey: ["company"],
     queryFn: () => api<Company>("/company"),
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ["auth-me"],
+    queryFn: () => api<Profile>("/auth/me"),
   });
 
   const { register, handleSubmit } = useForm({
@@ -60,6 +82,26 @@ export default function ConfiguracoesPage() {
       phone: company?.phone || "",
     },
   });
+
+  const {
+    register: registerProfile,
+    handleSubmit: handleSubmitProfile,
+    watch: watchProfile,
+    reset: resetProfile,
+    formState: { isDirty: profileDirty },
+  } = useForm({
+    values: {
+      name: profile?.name || "",
+      email: profile?.email || "",
+      currentPassword: "",
+    },
+  });
+
+  const profileEmail = watchProfile("email");
+  const emailChanging =
+    !!profile?.email &&
+    !!profileEmail &&
+    profileEmail.toLowerCase().trim() !== profile.email.toLowerCase();
 
   const [hours, setHours] = useState<BusinessHours>(DEFAULT_HOURS);
 
@@ -79,6 +121,46 @@ export default function ConfiguracoesPage() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["company"] });
+    },
+  });
+
+  const saveProfile = useMutation({
+    mutationFn: (payload: {
+      name: string;
+      email: string;
+      currentPassword?: string;
+    }) =>
+      api<Profile>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ["auth-me"] });
+      resetProfile({
+        name: data.name,
+        email: data.email,
+        currentPassword: "",
+      });
+      if (accessToken && refreshToken) {
+        setAuth(accessToken, refreshToken, {
+          id: data.id,
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          companyId: data.companyId,
+          companyName: data.companyName,
+          companySlug: data.companySlug,
+        });
+      } else if (authUser) {
+        localStorage.setItem(
+          "voltta_user",
+          JSON.stringify({
+            ...authUser,
+            name: data.name,
+            email: data.email,
+          }),
+        );
+      }
     },
   });
 
@@ -115,6 +197,61 @@ export default function ConfiguracoesPage() {
       <PageTitle eyebrow="CONTA" title="CONFIGURAÇÕES" />
       <div className="grid max-w-2xl gap-5">
         <BookingLinkCard />
+
+        <Card>
+          <h2 className="font-bold">Conta de acesso</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Nome e e-mail usados no login e na recuperação de senha.
+          </p>
+          <form
+            className="mt-5 space-y-4"
+            onSubmit={handleSubmitProfile((v) =>
+              saveProfile.mutate({
+                name: v.name,
+                email: v.email,
+                ...(emailChanging
+                  ? { currentPassword: v.currentPassword }
+                  : {}),
+              }),
+            )}
+          >
+            <div>
+              <Label>Seu nome</Label>
+              <Input {...registerProfile("name", { required: true })} />
+            </div>
+            <div>
+              <Label>E-mail de login / contato</Label>
+              <Input
+                type="email"
+                {...registerProfile("email", { required: true })}
+                autoComplete="email"
+              />
+            </div>
+            {emailChanging && (
+              <div>
+                <Label>Senha atual (para confirmar a troca de e-mail)</Label>
+                <Input
+                  type="password"
+                  {...registerProfile("currentPassword", {
+                    required: emailChanging,
+                  })}
+                  autoComplete="current-password"
+                />
+              </div>
+            )}
+            {saveProfile.isError && (
+              <p className="text-sm text-red-600">
+                {(saveProfile.error as Error).message}
+              </p>
+            )}
+            {saveProfile.isSuccess && (
+              <p className="text-sm text-emerald-700">Conta atualizada.</p>
+            )}
+            <Button disabled={saveProfile.isPending || !profileDirty}>
+              {saveProfile.isPending ? "SALVANDO..." : "SALVAR CONTA"}
+            </Button>
+          </form>
+        </Card>
 
         <Card>
           <h2 className="font-bold">Dados da barbearia</h2>
