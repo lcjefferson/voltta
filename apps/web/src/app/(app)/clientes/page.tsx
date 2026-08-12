@@ -21,6 +21,12 @@ type Customer = {
 
 type CustomersResponse = { data: Customer[]; total: number };
 
+type CustomerForm = {
+  name: string;
+  phone?: string;
+  birthDate?: string;
+};
+
 function toDateInput(value?: string | null) {
   if (!value) return "";
   return value.slice(0, 10);
@@ -33,28 +39,34 @@ function formatBirthDate(value?: string | null) {
   return `${d}/${m}/${y}`;
 }
 
+function displayPhone(c: Customer) {
+  return c.whatsapp || c.phone || "Sem telefone";
+}
+
 export default function ClientesPage() {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editBirthDate, setEditBirthDate] = useState("");
 
   const { data } = useQuery({
     queryKey: ["customers"],
     queryFn: () => api<CustomersResponse>("/customers?limit=100"),
   });
   const customers = data?.data ?? [];
-  const { register, handleSubmit, reset } = useForm<{
-    name: string;
-    phone?: string;
-    birthDate?: string;
-  }>();
+
+  const {
+    register: registerCreate,
+    handleSubmit: handleCreateSubmit,
+    reset: resetCreate,
+  } = useForm<CustomerForm>();
+
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+  } = useForm<CustomerForm>();
 
   const create = useMutation({
-    mutationFn: (values: {
-      name: string;
-      phone?: string;
-      birthDate?: string;
-    }) =>
+    mutationFn: (values: CustomerForm) =>
       api("/customers", {
         method: "POST",
         body: JSON.stringify({
@@ -66,24 +78,44 @@ export default function ClientesPage() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
-      reset();
+      resetCreate();
     },
   });
 
-  const updateBirthDate = useMutation({
-    mutationFn: (payload: { id: string; birthDate: string }) =>
+  const update = useMutation({
+    mutationFn: (payload: CustomerForm & { id: string }) =>
       api(`/customers/${payload.id}`, {
         method: "PATCH",
         body: JSON.stringify({
+          name: payload.name,
+          phone: payload.phone || undefined,
+          whatsapp: payload.phone || undefined,
           birthDate: payload.birthDate || null,
         }),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["customers"] });
       setEditingId(null);
-      setEditBirthDate("");
     },
   });
+
+  const remove = useMutation({
+    mutationFn: (id: string) =>
+      api(`/customers/${id}`, { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customers"] });
+      setEditingId(null);
+    },
+  });
+
+  function startEdit(c: Customer) {
+    setEditingId(c.id);
+    resetEdit({
+      name: c.name,
+      phone: c.whatsapp || c.phone || "",
+      birthDate: toDateInput(c.birthDate),
+    });
+  }
 
   return (
     <>
@@ -99,71 +131,112 @@ export default function ClientesPage() {
           <div className="divide-y">
             {customers.length ? (
               customers.map((c) => (
-                <div
-                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
-                  key={c.id}
-                >
-                  <div>
-                    <p className="font-semibold">{c.name}</p>
-                    <p className="text-sm text-neutral-500">
-                      {c.whatsapp || c.phone || "Sem telefone"}
-                    </p>
-                    <p className="mt-1 text-xs text-neutral-500">
-                      Aniversário:{" "}
-                      {formatBirthDate(c.birthDate) || "não informado"}
-                      {c.lastVisitAt
-                        ? ` · última visita ${new Date(
-                            c.lastVisitAt,
-                          ).toLocaleDateString("pt-BR")}`
-                        : " · novo cliente"}
-                    </p>
-                  </div>
+                <div className="py-4" key={c.id}>
                   {editingId === c.id ? (
-                    <div className="flex flex-wrap items-end gap-2">
-                      <div>
-                        <Label className="text-xs">Data</Label>
-                        <Input
-                          type="date"
-                          value={editBirthDate}
-                          onChange={(e) => setEditBirthDate(e.target.value)}
-                          className="w-[11rem]"
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        disabled={updateBirthDate.isPending}
-                        onClick={() =>
-                          updateBirthDate.mutate({
-                            id: c.id,
-                            birthDate: editBirthDate,
-                          })
-                        }
-                      >
-                        SALVAR
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => {
-                          setEditingId(null);
-                          setEditBirthDate("");
-                        }}
-                      >
-                        CANCELAR
-                      </Button>
-                    </div>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={() => {
-                        setEditingId(c.id);
-                        setEditBirthDate(toDateInput(c.birthDate));
-                      }}
+                    <form
+                      className="space-y-3"
+                      onSubmit={handleEditSubmit((v) =>
+                        update.mutate({ ...v, id: c.id }),
+                      )}
                     >
-                      {c.birthDate ? "EDITAR DATA" : "INFORMAR DATA"}
-                    </Button>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label>Nome</Label>
+                          <Input
+                            {...registerEdit("name", { required: true })}
+                          />
+                        </div>
+                        <div>
+                          <Label>WhatsApp</Label>
+                          <Input
+                            {...registerEdit("phone")}
+                            placeholder="(11) 99999-9999"
+                          />
+                        </div>
+                      </div>
+                      <div className="max-w-xs">
+                        <Label>Data de aniversário</Label>
+                        <Input type="date" {...registerEdit("birthDate")} />
+                      </div>
+                      {update.isError && (
+                        <p className="text-sm text-red-600">
+                          {(update.error as Error).message}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="submit" disabled={update.isPending}>
+                          {update.isPending ? "SALVANDO..." : "SALVAR"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setEditingId(null)}
+                        >
+                          CANCELAR
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Excluir o cliente "${c.name}"? Essa ação não remove o histórico, só some da lista.`,
+                              )
+                            ) {
+                              remove.mutate(c.id);
+                            }
+                          }}
+                        >
+                          EXCLUIR
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="font-semibold">{c.name}</p>
+                        <p className="text-sm text-neutral-500">
+                          {displayPhone(c)}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          Aniversário:{" "}
+                          {formatBirthDate(c.birthDate) || "não informado"}
+                          {c.lastVisitAt
+                            ? ` · última visita ${new Date(
+                                c.lastVisitAt,
+                              ).toLocaleDateString("pt-BR")}`
+                            : " · novo cliente"}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => startEdit(c)}
+                        >
+                          EDITAR
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="text-red-700 hover:bg-red-50"
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            if (
+                              confirm(
+                                `Excluir o cliente "${c.name}"? Essa ação não remove o histórico, só some da lista.`,
+                              )
+                            ) {
+                              remove.mutate(c.id);
+                            }
+                          }}
+                        >
+                          EXCLUIR
+                        </Button>
+                      </div>
+                    </div>
                   )}
                 </div>
               ))
@@ -180,20 +253,23 @@ export default function ClientesPage() {
             A data de aniversário alimenta a automação A5.
           </p>
           <form
-            onSubmit={handleSubmit((v) => create.mutate(v))}
+            onSubmit={handleCreateSubmit((v) => create.mutate(v))}
             className="mt-5 space-y-3"
           >
             <div>
               <Label>Nome</Label>
-              <Input {...register("name", { required: true })} />
+              <Input {...registerCreate("name", { required: true })} />
             </div>
             <div>
               <Label>WhatsApp</Label>
-              <Input {...register("phone")} placeholder="(11) 99999-9999" />
+              <Input
+                {...registerCreate("phone")}
+                placeholder="(11) 99999-9999"
+              />
             </div>
             <div>
               <Label>Data de aniversário</Label>
-              <Input type="date" {...register("birthDate")} />
+              <Input type="date" {...registerCreate("birthDate")} />
             </div>
             <Button disabled={create.isPending} className="w-full">
               ADICIONAR CLIENTE
