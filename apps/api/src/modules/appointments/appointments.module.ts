@@ -84,6 +84,10 @@ class AvailabilityQueryDto {
 
   @IsString()
   serviceIds!: string;
+
+  @IsOptional()
+  @IsString()
+  excludeAppointmentId?: string;
 }
 
 @Injectable()
@@ -106,6 +110,7 @@ export class AppointmentsService {
     professionalId: string,
     serviceIds: string[],
     date: string,
+    excludeAppointmentId?: string,
   ) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       throw new BadRequestException('Data inválida');
@@ -166,6 +171,9 @@ export class AppointmentsService {
         status: { not: 'CANCELED' },
         startsAt: { lt: dayEnd },
         endsAt: { gt: dayStart },
+        ...(excludeAppointmentId
+          ? { id: { not: excludeAppointmentId } }
+          : {}),
       },
       select: { startsAt: true, endsAt: true },
     });
@@ -456,6 +464,7 @@ class AppointmentsController {
       q.professionalId,
       ids,
       q.date,
+      q.excludeAppointmentId,
     );
   }
 

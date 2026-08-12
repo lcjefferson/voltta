@@ -29,8 +29,9 @@ type Appointment = {
   customer?: { id: string; name: string };
   professional?: { id: string; name: string };
   services?: {
+    serviceId?: string;
     price?: number | string;
-    service?: { name: string; price?: number | string };
+    service?: { id?: string; name: string; price?: number | string };
   }[];
 };
 type Company = { openDates?: string[] };
@@ -234,6 +235,9 @@ export default function AgendaPage() {
   const [customerId, setCustomerId] = useState("");
   const [changingId, setChangingId] = useState<string | null>(null);
   const [changeCustomerId, setChangeCustomerId] = useState("");
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState("");
+  const [rescheduleStartsAt, setRescheduleStartsAt] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [startsAt, setStartsAt] = useState("");
   const [period, setPeriod] = useState<PeriodFilter>("today");
@@ -312,6 +316,37 @@ export default function AgendaPage() {
 
   const slots = availability?.slots || [];
 
+  const reschedulingAppointment = appointments.find(
+    (a) => a.id === reschedulingId,
+  );
+  const rescheduleProfessionalId =
+    reschedulingAppointment?.professional?.id || "";
+  const rescheduleServiceId =
+    reschedulingAppointment?.services?.[0]?.serviceId ||
+    reschedulingAppointment?.services?.[0]?.service?.id ||
+    "";
+
+  const { data: rescheduleAvailability, isFetching: loadingRescheduleSlots } =
+    useQuery({
+      queryKey: [
+        "appointments-reschedule-availability",
+        rescheduleProfessionalId,
+        rescheduleServiceId,
+        rescheduleDate,
+      ],
+      queryFn: () =>
+        api<Availability>(
+          `/appointments/availability?professionalId=${rescheduleProfessionalId}&serviceIds=${rescheduleServiceId}&date=${rescheduleDate}&excludeAppointmentId=${reschedulingId}`,
+        ),
+      enabled:
+        !!reschedulingId &&
+        !!rescheduleProfessionalId &&
+        !!rescheduleServiceId &&
+        !!rescheduleDate,
+    });
+
+  const rescheduleSlots = rescheduleAvailability?.slots || [];
+
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ["appointments"] });
     qc.invalidateQueries({ queryKey: ["appointments-availability"] });
@@ -368,6 +403,36 @@ export default function AgendaPage() {
       setChangeCustomerId("");
     },
   });
+
+  const reschedule = useMutation({
+    mutationFn: ({ id, startsAt }: { id: string; startsAt: string }) =>
+      api(`/appointments/${id}/reschedule`, {
+        method: "PATCH",
+        body: JSON.stringify({ startsAt }),
+      }),
+    onSuccess: () => {
+      invalidateAll();
+      setReschedulingId(null);
+      setRescheduleDate("");
+      setRescheduleStartsAt("");
+    },
+  });
+
+  function openReschedule(a: Appointment) {
+    setChangingId(null);
+    setReschedulingId(a.id);
+    const day = new Date(a.startsAt).toLocaleDateString("en-CA", {
+      timeZone: "America/Sao_Paulo",
+    });
+    setRescheduleDate(day);
+    setRescheduleStartsAt("");
+  }
+
+  function closeReschedule() {
+    setReschedulingId(null);
+    setRescheduleDate("");
+    setRescheduleStartsAt("");
+  }
 
   return (
     <>
@@ -479,7 +544,14 @@ export default function AgendaPage() {
                         </Button>
                         <Button
                           variant="outline"
+                          onClick={() => openReschedule(a)}
+                        >
+                          REAGENDAR
+                        </Button>
+                        <Button
+                          variant="outline"
                           onClick={() => {
+                            setReschedulingId(null);
                             setChangingId(a.id);
                             setChangeCustomerId(a.customer?.id || "");
                           }}
@@ -488,8 +560,13 @@ export default function AgendaPage() {
                         </Button>
                         <Button
                           variant="outline"
+                          className="border-red-300 text-red-700 hover:bg-red-50"
                           onClick={() => {
-                            if (confirm("Cancelar este agendamento?")) {
+                            if (
+                              confirm(
+                                "Cancelar este agendamento? Ele deixa de ocupar a agenda.",
+                              )
+                            ) {
                               cancel.mutate(a.id);
                             }
                           }}
@@ -497,6 +574,116 @@ export default function AgendaPage() {
                         >
                           CANCELAR
                         </Button>
+                      </div>
+                    )}
+
+                    {reschedulingId === a.id && (
+                      <div className="mt-3 space-y-3 rounded-md border border-neutral-200 bg-white p-3">
+                        <p className="text-sm font-semibold">
+                          Novo horário
+                          {a.professional?.name
+                            ? ` · ${a.professional.name}`
+                            : ""}
+                          {a.services?.[0]?.service?.name
+                            ? ` · ${a.services[0].service.name}`
+                            : ""}
+                        </p>
+                        {!rescheduleProfessionalId || !rescheduleServiceId ? (
+                          <p className="text-sm text-neutral-500">
+                            Não foi possível carregar profissional/serviço deste
+                            agendamento.
+                          </p>
+                        ) : !openDates.length ? (
+                          <p className="text-sm text-neutral-500">
+                            Nenhum dia de funcionamento configurado.
+                          </p>
+                        ) : (
+                          <>
+                            <div>
+                              <Label>Dia</Label>
+                              <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
+                                {openDates.map((d) => (
+                                  <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => {
+                                      setRescheduleDate(d);
+                                      setRescheduleStartsAt("");
+                                    }}
+                                    className={`min-w-[5.25rem] shrink-0 rounded-lg border px-2.5 py-2 text-xs font-semibold ${
+                                      rescheduleDate === d
+                                        ? "border-[#c4a574] bg-[#c4a574] text-[#171715]"
+                                        : "border-neutral-200 bg-white hover:border-[#c4a574]"
+                                    }`}
+                                  >
+                                    {formatDayLabel(d)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {rescheduleDate && (
+                              <div>
+                                <Label>Horários disponíveis</Label>
+                                {loadingRescheduleSlots ? (
+                                  <p className="mt-2 text-sm text-neutral-500">
+                                    Buscando horários...
+                                  </p>
+                                ) : !rescheduleSlots.length ? (
+                                  <p className="mt-2 text-sm text-neutral-500">
+                                    Nenhum horário livre neste dia.
+                                  </p>
+                                ) : (
+                                  <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                                    {rescheduleSlots.map((slot) => (
+                                      <button
+                                        key={slot.startsAt}
+                                        type="button"
+                                        onClick={() =>
+                                          setRescheduleStartsAt(slot.startsAt)
+                                        }
+                                        className={`rounded-lg border px-2 py-2 text-sm font-bold ${
+                                          rescheduleStartsAt === slot.startsAt
+                                            ? "border-[#c4a574] bg-[#c4a574] text-[#171715]"
+                                            : "border-neutral-200 bg-white hover:border-[#c4a574]"
+                                        }`}
+                                      >
+                                        {slot.label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {reschedule.error && (
+                          <p className="text-sm text-red-600">
+                            {(reschedule.error as Error).message}
+                          </p>
+                        )}
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            disabled={
+                              !rescheduleStartsAt || reschedule.isPending
+                            }
+                            onClick={() =>
+                              reschedule.mutate({
+                                id: a.id,
+                                startsAt: rescheduleStartsAt,
+                              })
+                            }
+                          >
+                            {reschedule.isPending
+                              ? "SALVANDO..."
+                              : "SALVAR HORÁRIO"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            onClick={closeReschedule}
+                          >
+                            FECHAR
+                          </Button>
+                        </div>
                       </div>
                     )}
 
