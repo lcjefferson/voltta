@@ -11,6 +11,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Public, CurrentUser, AuthUser } from '../../common/decorators/auth.decorators';
 import { DEFAULT_BUSINESS_HOURS } from '../../common/business-hours';
+import { MailModule } from '../../providers/mail/mail.module';
 import { MailService } from '../../providers/mail/mail.service';
 
 class SignupDto { @IsString() name!: string; @IsEmail() email!: string; @IsString() @MinLength(6) password!: string; @IsString() companyName!: string; }
@@ -342,5 +343,5 @@ export class AuthController {
   @Get('me') me(@CurrentUser() user: AuthUser) { return this.service.me(user.userId); }
   @Patch('me') updateMe(@CurrentUser() user: AuthUser, @Body() dto: UpdateProfileDto) { return this.service.updateProfile(user.userId, dto); }
 }
-@Module({ imports: [PrismaModule, PassportModule, JwtModule.register({})], controllers: [AuthController], providers: [AuthService, JwtStrategy, MailService], exports: [AuthService] })
+@Module({ imports: [PrismaModule, PassportModule, JwtModule.register({}), MailModule], controllers: [AuthController], providers: [AuthService, JwtStrategy], exports: [AuthService] })
 export class AuthModule {}

@@ -7,12 +7,56 @@ export class MailService {
 
   constructor(private readonly config: ConfigService) {}
 
-  async sendPasswordReset(to: string, resetUrl: string): Promise<boolean> {
-    const apiKey = this.config.get<string>('RESEND_API_KEY')?.trim();
-    const from =
+  private fromAddress() {
+    return (
       this.config.get<string>('MAIL_FROM')?.trim() ||
-      'VOLTTA <onboarding@resend.dev>';
+      'VOLTTA <onboarding@resend.dev>'
+    );
+  }
 
+  private async sendEmail(input: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+    logContext: string;
+  }): Promise<boolean> {
+    const apiKey = this.config.get<string>('RESEND_API_KEY')?.trim();
+    if (!apiKey) {
+      this.logger.warn(
+        `RESEND_API_KEY ausente — e-mail não enviado (${input.logContext}) para ${input.to}`,
+      );
+      return false;
+    }
+
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: this.fromAddress(),
+        to: input.to,
+        subject: input.subject,
+        text: input.text,
+        html: input.html,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      this.logger.error(
+        `Falha Resend (${response.status}) [${input.logContext}]: ${body}`,
+      );
+      return false;
+    }
+
+    this.logger.log(`E-mail enviado [${input.logContext}] → ${input.to}`);
+    return true;
+  }
+
+  async sendPasswordReset(to: string, resetUrl: string): Promise<boolean> {
     const subject = 'Redefinir sua senha — VOLTTA';
     const text = [
       'Olá,',
@@ -40,33 +84,63 @@ export class MailService {
         <p style="font-size:12px;color:#999;word-break:break-all">${resetUrl}</p>
       </div>
     `;
-
-    if (!apiKey) {
-      this.logger.warn(
-        `RESEND_API_KEY ausente — e-mail não enviado. Link de reset: ${resetUrl}`,
-      );
-      return false;
-    }
-
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from, to, subject, text, html }),
+    return this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+      logContext: 'password-reset',
     });
+  }
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      this.logger.error(
-        `Falha ao enviar e-mail via Resend (${response.status}): ${body}`,
-      );
-      this.logger.warn(`Link de reset (fallback log): ${resetUrl}`);
-      return false;
-    }
+  async sendTrialReminder(input: {
+    to: string;
+    companyName: string;
+    daysLeft: number;
+    billingUrl: string;
+  }): Promise<boolean> {
+    const { to, companyName, daysLeft, billingUrl } = input;
+    const when =
+      daysLeft <= 1
+        ? 'amanhã'
+        : `em ${daysLeft} dias`;
+    const subject =
+      daysLeft <= 1
+        ? 'Seu trial VOLTTA termina amanhã'
+        : `Seu trial VOLTTA termina em ${daysLeft} dias`;
 
-    this.logger.log(`E-mail de reset enviado para ${to}`);
-    return true;
+    const text = [
+      `Olá,`,
+      '',
+      `O período de avaliação da ${companyName} na VOLTTA termina ${when}.`,
+      '',
+      'Para continuar com agenda, WhatsApp e automações sem interrupção, ative seu plano:',
+      billingUrl,
+      '',
+      '— Equipe VOLTTA',
+    ].join('\n');
+
+    const html = `
+      <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;color:#1d1d1b">
+        <p style="font-size:12px;letter-spacing:.2em;color:#9b7a44;font-weight:700">VOLTTA™</p>
+        <h1 style="font-size:28px;margin:8px 0 16px">Trial terminando</h1>
+        <p>O período de avaliação da <strong>${companyName}</strong> termina <strong>${when}</strong>.</p>
+        <p>Ative o plano para manter agenda, WhatsApp e automações sem interrupção.</p>
+        <p style="margin:28px 0">
+          <a href="${billingUrl}" style="display:inline-block;background:#c4a574;color:#171715;text-decoration:none;font-weight:700;padding:12px 20px;border-radius:6px">
+            ATIVAR MEU PLANO
+          </a>
+        </p>
+        <p style="font-size:13px;color:#666">Se já assinou, pode ignorar este e-mail.</p>
+      </div>
+    `;
+
+    return this.sendEmail({
+      to,
+      subject,
+      text,
+      html,
+      logContext: `trial-reminder-d${daysLeft}`,
+    });
   }
 }

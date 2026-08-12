@@ -41,5 +41,12 @@ Roles (ADMIN / BARBEIRO / RECEPCIONISTA) são seedadas automaticamente no boot d
 
 Sem `RESEND_API_KEY`, o link de reset só aparece nos **logs da API**.
 
+## Lembrete de fim de trial
+Com `RESEND_API_KEY` configurada, a API envia e-mail automático ao ADMIN:
+- **3 dias** antes do fim do trial  
+- **1 dia** antes do fim do trial  
+
+Link do e-mail: `/assinatura`. Roda diariamente (~10h Brasília). Sem a key, o job só registra nos logs.
+
 ## Nota
 Se você já tem um resource **Web** sozinho funcionando, pode mantê-lo **ou** trocar pelo Compose (evite dois webs no mesmo domínio).

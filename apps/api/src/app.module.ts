@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtAuthGuard, RolesGuard } from './common/guards/auth.guards';
@@ -18,9 +19,33 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './modules/health/health.module';
+import { TrialRemindersModule } from './modules/trial-reminders/trial-reminders.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]), PrismaModule, AuthModule, CompanyModule, UsersModule, CustomersModule, ServicesModule, AutomationsModule, ScoresModule, AppointmentsModule, PublicBookingModule, WhatsappModule, FinanceModule, DashboardModule, BillingModule, HealthModule],
-  providers: [{ provide: APP_GUARD, useClass: JwtAuthGuard }, { provide: APP_GUARD, useClass: RolesGuard }],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    PrismaModule,
+    AuthModule,
+    CompanyModule,
+    UsersModule,
+    CustomersModule,
+    ServicesModule,
+    AutomationsModule,
+    ScoresModule,
+    AppointmentsModule,
+    PublicBookingModule,
+    WhatsappModule,
+    FinanceModule,
+    DashboardModule,
+    BillingModule,
+    HealthModule,
+    TrialRemindersModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: RolesGuard },
+  ],
 })
 export class AppModule {}
