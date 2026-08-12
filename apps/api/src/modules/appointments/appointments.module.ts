@@ -308,7 +308,7 @@ export class AppointmentsService {
       );
     }
 
-    return this.prisma.appointment.update({
+    const updated = await this.prisma.appointment.update({
       where: { id },
       data: { startsAt: start, endsAt: end },
       include: {
@@ -317,6 +317,8 @@ export class AppointmentsService {
         services: { include: { service: true } },
       },
     });
+    await this.automations.rescheduleAppointmentReminders(id);
+    return updated;
   }
 
   async changeCustomer(companyId: string, id: string, dto: ChangeCustomerDto) {
@@ -365,6 +367,7 @@ export class AppointmentsService {
         where: { id },
         data: { status: 'CANCELED' },
       });
+      await this.automations.cancelAppointmentAutomations(id);
       return { message: 'Agendamento cancelado' };
     }
 

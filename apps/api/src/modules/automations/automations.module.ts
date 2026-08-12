@@ -313,25 +313,240 @@ export class AutomationsService {
   }
 
   async scheduleForAppointmentCreated(appointmentId: string) {
-    return this.schedule(appointmentId, 'A1', 0);
+    await this.schedule(appointmentId, 'A1', 0);
+    await this.scheduleAppointmentReminders(appointmentId);
+  }
+
+  async scheduleAppointmentReminders(appointmentId: string) {
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+    });
+    if (!appointment || appointment.status === 'CANCELED') return;
+
+    const startsMs = appointment.startsAt.getTime();
+    const now = Date.now();
+    const delayA2 = startsMs - 24 * 3600_000 - now;
+    const delayA3 = startsMs - 2 * 3600_000 - now;
+    const version = appointment.startsAt.toISOString();
+
+    if (delayA2 > 0) {
+      await this.schedule(appointmentId, 'A2', delayA2, version);
+    }
+    if (delayA3 > 0) {
+      await this.schedule(appointmentId, 'A3', delayA3, version);
+    }
+  }
+
+  async rescheduleAppointmentReminders(appointmentId: string) {
+    await this.skipPendingReminders(
+      appointmentId,
+      'reagendado — lembretes recalculados',
+    );
+    await this.scheduleAppointmentReminders(appointmentId);
+  }
+
+  async cancelAppointmentAutomations(appointmentId: string) {
+    await this.skipPendingReminders(appointmentId, 'agendamento cancelado');
   }
 
   async scheduleReturnCampaign(appointmentId: string) {
-    return this.schedule(appointmentId, 'A4', 0);
+    const appointment = await this.prisma.appointment.findUnique({
+      where: { id: appointmentId },
+      include: { services: true, customer: true },
+    });
+    if (!appointment) return;
+    if (!appointment.customer.marketingOptIn) return;
+
+    const intervalDays = appointment.services
+      .map((s) => s.returnIntervalDays || 0)
+      .filter((d) => d > 0)
+      .reduce((max, d) => Math.max(max, d), 0);
+
+    // Sem intervalo de retorno no serviço → A4 não agenda (PRD)
+    if (!intervalDays) {
+      this.logger.log(
+        `A4 ignorada para ${appointmentId}: serviço sem returnIntervalDays`,
+      );
+      return;
+    }
+
+    await this.schedule(appointmentId, 'A4', intervalDays * 86400_000);
   }
 
-  async scheduleReminder(
-    appointmentId: string,
-    trigger: 'A2' | 'A3',
-    delayMs: number,
-  ) {
-    return this.schedule(appointmentId, trigger, delayMs);
+  private async skipPendingReminders(appointmentId: string, reason: string) {
+    await this.prisma.automationExecution.updateMany({
+      where: {
+        appointmentId,
+        status: 'SCHEDULED',
+        rule: { trigger: { in: ['A2', 'A3'] } },
+      },
+      data: {
+        status: 'SKIPPED',
+        executedAt: new Date(),
+        errorMessage: reason,
+      },
+    });
+  }
+
+  private dueRunning = false;
+
+  /** Processa execuções vencidas no banco (sobrevive a restart da API). */
+  @Cron(CronExpression.EVERY_MINUTE)
+  async processDueExecutions() {
+    if (this.dueRunning) return;
+    this.dueRunning = true;
+    try {
+      const due = await this.prisma.automationExecution.findMany({
+        where: {
+          status: 'SCHEDULED',
+          scheduledFor: { lte: new Date() },
+        },
+        include: {
+          rule: { select: { trigger: true } },
+          appointment: { select: { id: true, status: true } },
+          customer: {
+            select: {
+              id: true,
+              name: true,
+              whatsapp: true,
+              phone: true,
+              marketingOptIn: true,
+            },
+          },
+        },
+        orderBy: { scheduledFor: 'asc' },
+        take: 50,
+      });
+
+      for (const execution of due) {
+        await this.executeDue(execution);
+      }
+    } finally {
+      this.dueRunning = false;
+    }
+  }
+
+  private async executeDue(execution: {
+    id: string;
+    companyId: string;
+    customerId: string | null;
+    payload: Prisma.JsonValue;
+    rule: { trigger: string };
+    appointment: { id: string; status: string } | null;
+    customer: {
+      id: string;
+      name: string;
+      whatsapp: string | null;
+      phone: string | null;
+      marketingOptIn: boolean;
+    } | null;
+  }) {
+    const claimed = await this.prisma.automationExecution.updateMany({
+      where: { id: execution.id, status: 'SCHEDULED' },
+      data: { status: 'RUNNING' },
+    });
+    if (!claimed.count) return;
+
+    const trigger = execution.rule.trigger;
+    if (
+      (trigger === 'A2' || trigger === 'A3') &&
+      execution.appointment?.status === 'CANCELED'
+    ) {
+      await this.prisma.automationExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'SKIPPED',
+          executedAt: new Date(),
+          errorMessage: 'agendamento cancelado',
+        },
+      });
+      return;
+    }
+
+    if (trigger === 'A4' && execution.customer && !execution.customer.marketingOptIn) {
+      await this.prisma.automationExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'SKIPPED',
+          executedAt: new Date(),
+          errorMessage: 'marketing_opt_out',
+        },
+      });
+      return;
+    }
+
+    const payload = (execution.payload || {}) as {
+      text?: string;
+      to?: string | null;
+      nome?: string;
+      data?: string;
+      hora?: string;
+      link?: string;
+    };
+    const text = payload.text || '';
+    const to =
+      payload.to ||
+      execution.customer?.whatsapp ||
+      execution.customer?.phone ||
+      null;
+
+    if (!text) {
+      await this.prisma.automationExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'FAILED',
+          executedAt: new Date(),
+          errorMessage: 'payload sem texto',
+        },
+      });
+      return;
+    }
+
+    if (to) {
+      const recent = await this.prisma.automationExecution.findMany({
+        where: {
+          companyId: execution.companyId,
+          customerId: execution.customerId || undefined,
+          status: 'SUCCEEDED',
+          executedAt: { gte: new Date(Date.now() - 120_000) },
+          id: { not: execution.id },
+        },
+        take: 10,
+      });
+      const duplicated = recent.some((item) => {
+        const p = item.payload as { text?: string; to?: string } | null;
+        return p?.text === text && p?.to === to;
+      });
+      if (duplicated) {
+        await this.prisma.automationExecution.update({
+          where: { id: execution.id },
+          data: {
+            status: 'SKIPPED',
+            executedAt: new Date(),
+            errorMessage: 'Mensagem idêntica já enviada recentemente',
+          },
+        });
+        return;
+      }
+    }
+
+    const result = await this.whatsapp.trySend(execution.companyId, to, text);
+    await this.prisma.automationExecution.update({
+      where: { id: execution.id },
+      data: {
+        status: result.sent ? 'SUCCEEDED' : 'FAILED',
+        executedAt: new Date(),
+        errorMessage: result.sent ? null : result.reason,
+        payload: { ...payload, to, sendResult: result },
+      },
+    });
   }
 
   private async schedule(
     appointmentId: string,
     trigger: string,
     delayMs: number,
+    keyVersion?: string,
   ) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -350,7 +565,6 @@ export class AutomationsService {
     const rule = rules[0];
     if (!rule) return;
 
-    // Evita 2x a mesma automação se existirem regras duplicadas ativas
     if (rules.length > 1) {
       await this.prisma.automationRule.updateMany({
         where: {
@@ -362,11 +576,18 @@ export class AutomationsService {
 
     if (trigger === 'A4' && !appointment.customer.marketingOptIn) return;
 
-    const webUrl = process.env.WEB_URL || 'http://localhost:3000';
+    const webUrl = (process.env.WEB_URL || 'http://localhost:3000').replace(
+      /\/$/,
+      '',
+    );
+    const startsAt = appointment.startsAt;
     const vars = {
       nome: appointment.customer.name,
-      data: appointment.startsAt.toLocaleDateString('pt-BR'),
-      hora: appointment.startsAt.toLocaleTimeString('pt-BR', {
+      data: startsAt.toLocaleDateString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+      }),
+      hora: startsAt.toLocaleTimeString('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
         hour: '2-digit',
         minute: '2-digit',
       }),
@@ -376,18 +597,26 @@ export class AutomationsService {
     const actions = Array.isArray(rule.actions)
       ? (rule.actions as Array<{ type?: string; template?: string }>)
       : [];
+    const defaultTemplates: Record<string, string> = {
+      A1: 'Olá {{nome}}\nSeu horário está confirmado para {{data}} às {{hora}}.',
+      A2: 'Olá {{nome}}\nLembrete: seu horário é amanhã, {{data}} às {{hora}}.',
+      A3: 'Olá {{nome}}\nSeu horário é hoje às {{hora}}. Te esperamos!',
+      A4: 'Olá {{nome}}\nEstá na hora de renovar seu visual.\nClique aqui: {{link}}',
+    };
     const template =
       actions[0]?.template ||
+      defaultTemplates[trigger] ||
       'Olá {{nome}}, seu horário é {{data}} às {{hora}}. {{link}}';
     const text = renderTemplate(template, vars);
-    // Uma execução por trigger + agendamento (não por ruleId)
-    const key = `${trigger}:${appointmentId}`;
+    const key = keyVersion
+      ? `${trigger}:${appointmentId}:${keyVersion}`
+      : `${trigger}:${appointmentId}`;
     const to =
       appointment.customer.whatsapp || appointment.customer.phone || null;
+    const scheduledFor = new Date(Date.now() + Math.max(0, delayMs));
 
-    let executionId: string;
     try {
-      const execution = await this.prisma.automationExecution.create({
+      await this.prisma.automationExecution.create({
         data: {
           companyId: appointment.companyId,
           ruleId: rule.id,
@@ -395,71 +624,19 @@ export class AutomationsService {
           appointmentId,
           idempotencyKey: key,
           status: 'SCHEDULED',
-          scheduledFor: new Date(Date.now() + delayMs),
-          payload: { ...vars, text, to },
+          scheduledFor,
+          payload: { ...vars, text, to, trigger },
         },
       });
-      executionId = execution.id;
     } catch {
-      // Já agendada/enviada para este trigger+agendamento
+      // Já agendada/enviada para este trigger+agendamento(+versão)
       return;
     }
 
-    const run = async () => {
-      // Claim atômico: só um worker envia
-      const claimed = await this.prisma.automationExecution.updateMany({
-        where: { id: executionId, status: 'SCHEDULED' },
-        data: { status: 'RUNNING' },
-      });
-      if (!claimed.count) return;
-
-      // Proteção extra: mesmo destino + mesmo texto nos últimos 2 min
-      if (to) {
-        const recent = await this.prisma.automationExecution.findMany({
-          where: {
-            companyId: appointment.companyId,
-            customerId: appointment.customerId,
-            status: 'SUCCEEDED',
-            executedAt: { gte: new Date(Date.now() - 120_000) },
-            id: { not: executionId },
-          },
-          take: 10,
-        });
-        const duplicated = recent.some((item) => {
-          const payload = item.payload as { text?: string; to?: string } | null;
-          return payload?.text === text && payload?.to === to;
-        });
-        if (duplicated) {
-          await this.prisma.automationExecution.update({
-            where: { id: executionId },
-            data: {
-              status: 'SKIPPED',
-              executedAt: new Date(),
-              errorMessage: 'Mensagem idêntica já enviada recentemente',
-            },
-          });
-          return;
-        }
-      }
-
-      const result = await this.whatsapp.trySend(
-        appointment.companyId,
-        to,
-        text,
-      );
-      await this.prisma.automationExecution.update({
-        where: { id: executionId },
-        data: {
-          status: result.sent ? 'SUCCEEDED' : 'FAILED',
-          executedAt: new Date(),
-          errorMessage: result.sent ? null : result.reason,
-          payload: { ...vars, text, to, sendResult: result },
-        },
-      });
-    };
-
-    if (delayMs <= 0) void run();
-    else setTimeout(() => void run(), delayMs);
+    // Disparo imediato (A1 / A4 com delay 0) sem esperar o cron
+    if (delayMs <= 0) {
+      await this.processDueExecutions();
+    }
   }
 
   list(companyId: string) {
