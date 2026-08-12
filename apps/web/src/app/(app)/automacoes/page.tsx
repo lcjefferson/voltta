@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Repeat2, Pencil, Plus, Trash2 } from "lucide-react";
@@ -76,6 +76,39 @@ const TRIGGERS = [
   },
 ] as const;
 
+const MESSAGE_EMOJIS = [
+  "😊",
+  "😄",
+  "🙂",
+  "😉",
+  "🤩",
+  "🙌",
+  "👏",
+  "👍",
+  "💪",
+  "✨",
+  "🔥",
+  "💯",
+  "❤️",
+  "💛",
+  "🎉",
+  "🎂",
+  "🎁",
+  "✂️",
+  "💈",
+  "🕒",
+  "📅",
+  "📍",
+  "✅",
+  "🔔",
+  "💬",
+  "📲",
+  "🙏",
+  "😎",
+  "🤝",
+  "🌟",
+] as const;
+
 function getTemplate(rule?: Rule | null) {
   if (!rule) return TRIGGERS[0].defaultTemplate;
   const actions = Array.isArray(rule.actions)
@@ -98,6 +131,7 @@ export default function AutomacoesPage() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Rule | null>(null);
   const [creating, setCreating] = useState(false);
+  const templateRef = useRef<HTMLTextAreaElement | null>(null);
 
   const { data: rules = [], isLoading } = useQuery({
     queryKey: ["automation-rules"],
@@ -127,11 +161,37 @@ export default function AutomacoesPage() {
     };
   }, [editing, creating]);
 
-  const { register, handleSubmit, setValue, watch, reset } = useForm<FormValues>({
-    values: defaults,
-  });
+  const { register, handleSubmit, setValue, watch, reset, getValues } =
+    useForm<FormValues>({
+      values: defaults,
+    });
 
   const selectedTrigger = watch("trigger");
+  const { ref: templateRegisterRef, ...templateRegister } = register(
+    "template",
+    { required: true },
+  );
+
+  function insertAtCursor(snippet: string) {
+    const el = templateRef.current;
+    const current = getValues("template") || "";
+    if (!el) {
+      setValue("template", `${current}${snippet}`, {
+        shouldDirty: true,
+        shouldValidate: true,
+      });
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? current.length;
+    const next = `${current.slice(0, start)}${snippet}${current.slice(end)}`;
+    setValue("template", next, { shouldDirty: true, shouldValidate: true });
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }
 
   const save = useMutation({
     mutationFn: async (values: FormValues) => {
@@ -284,15 +344,55 @@ export default function AutomacoesPage() {
             </div>
             <div>
               <Label>Mensagem WhatsApp</Label>
+              <div className="mt-2 rounded-md border border-neutral-200 bg-neutral-50 p-2">
+                <p className="mb-2 text-xs font-semibold text-neutral-500">
+                  Emojis
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {MESSAGE_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      className="grid size-8 place-items-center rounded-md text-lg hover:bg-white"
+                      title={`Inserir ${emoji}`}
+                      onClick={() => insertAtCursor(emoji)}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+                <p className="mb-2 mt-3 text-xs font-semibold text-neutral-500">
+                  Variáveis
+                </p>
+                <div className="flex flex-wrap gap-1">
+                  {["{{nome}}", "{{data}}", "{{hora}}", "{{link}}"].map(
+                    (variable) => (
+                      <button
+                        key={variable}
+                        type="button"
+                        className="rounded-md border border-neutral-200 bg-white px-2 py-1 font-mono text-xs hover:border-[#c4a574]"
+                        onClick={() => insertAtCursor(variable)}
+                      >
+                        {variable}
+                      </button>
+                    ),
+                  )}
+                </div>
+              </div>
               <textarea
-                className="mt-1 min-h-32 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
-                {...register("template", { required: true })}
+                className="mt-2 min-h-32 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                {...templateRegister}
+                ref={(el) => {
+                  templateRegisterRef(el);
+                  templateRef.current = el;
+                }}
               />
               <p className="mt-2 text-xs text-neutral-500">
-                Variáveis: {"{{nome}}"} {"{{data}}"} {"{{hora}}"} {"{{link}}"}
+                Clique no emoji ou na variável para inserir na mensagem
                 {selectedTrigger === "CUSTOM"
                   ? " · Gatilho personalizado (dispare via integrações futuras)"
                   : ""}
+                .
               </p>
             </div>
             <label className="flex items-center gap-2 text-sm">
