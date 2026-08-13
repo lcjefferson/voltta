@@ -267,8 +267,8 @@ Prefixo `/v1`. Breaking changes → `/v2`.
 
 | Method | Path |
 |--------|------|
-| GET | `/health` |
-| GET | `/ready` |
+| GET | `/health` | Liveness (processo) |
+| GET | `/ready` | Readiness (Postgres + Redis + contagens das filas); 503 se DB/Redis falhar |
 
 ---
 

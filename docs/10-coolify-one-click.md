@@ -50,6 +50,10 @@ A API usa Redis (`REDIS_URL`) para:
 
 No Coolify Compose, `REDIS_URL=redis://redis:6379` já vem configurado. Sem Redis saudável, a API sobe mas as automações atrasadas ficam só no banco até o Redis voltar (o cron tenta reenfileirar).
 
+**Health**
+- `GET /health` → liveness (`{"status":"ok"}`) — use no healthcheck do Coolify
+- `GET /ready` → readiness (DB + Redis) + contagens `automations` / `whatsapp-outbound`; responde **503** se Postgres ou Redis falhar
+
 ## Confirmação de e-mail
 No cadastro (e ao trocar o e-mail em Configurações), a API envia link `/verify-email?token=...`.
 

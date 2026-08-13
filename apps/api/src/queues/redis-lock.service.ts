@@ -23,6 +23,11 @@ export class RedisLockService implements OnModuleDestroy {
     await this.redis.quit().catch(() => undefined);
   }
 
+  async ping(): Promise<boolean> {
+    const result = await this.redis.ping();
+    return result === 'PONG';
+  }
+
   /** Tenta adquirir lock. Retorna true se este processo ficou com o lock. */
   async tryAcquire(key: string, ttlSeconds: number): Promise<boolean> {
     const result = await this.redis.set(
