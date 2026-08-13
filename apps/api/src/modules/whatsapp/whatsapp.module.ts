@@ -13,6 +13,8 @@ import {
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectQueue, OnWorkerEvent, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import { IsOptional, IsString, MinLength } from 'class-validator';
 import { RoleCode, WhatsappConnectionStatus } from '@prisma/client';
 import { PrismaModule } from '../../prisma/prisma.module';
@@ -31,6 +33,14 @@ import {
   CustomersModule,
   CustomersService,
 } from '../customers/customers.module';
+import { QueuesModule } from '../../queues/queues.module';
+import { RedisLockService } from '../../queues/redis-lock.service';
+import {
+  WHATSAPP_COMPANY_GAP_MS,
+  WHATSAPP_QUEUE,
+  WHATSAPP_WORKER_LIMITER,
+  type SendWhatsappJob,
+} from '../../queues/queue.constants';
 
 type StoredCreds = {
   instanceToken: string;
@@ -85,6 +95,8 @@ export class WhatsappService {
     private readonly crypto: CredentialsCrypto,
     private readonly customers: CustomersService,
     private readonly config: ConfigService,
+    @InjectQueue(WHATSAPP_QUEUE)
+    private readonly whatsappQueue: Queue<SendWhatsappJob>,
   ) {}
 
   private async getRow(companyId: string) {
@@ -401,6 +413,114 @@ export class WhatsappService {
   }
 
   /**
+   * Enfileira envio rate-limited. Testes manuais da UI continuam síncronos via trySend/sendForCompany.
+   */
+  async enqueueSend(input: SendWhatsappJob) {
+    if (!input.to?.trim()) {
+      if (input.executionId) {
+        await this.finalizeExecution(input.executionId, {
+          sent: false,
+          reason: 'sem_whatsapp',
+        });
+      }
+      return { queued: false, reason: 'sem_whatsapp' as const };
+    }
+
+    try {
+      await this.whatsappQueue.add(
+        'send-text',
+        {
+          companyId: input.companyId,
+          to: input.to.trim(),
+          text: input.text,
+          executionId: input.executionId,
+        },
+        {
+          jobId: input.executionId
+            ? `wa-exec:${input.executionId}`
+            : undefined,
+          attempts: 5,
+          backoff: { type: 'exponential', delay: 10_000 },
+        },
+      );
+      return { queued: true as const };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/already exists|Job with this id/i.test(message)) {
+        return { queued: true as const, deduped: true };
+      }
+      this.logger.warn(`Falha ao enfileirar WhatsApp: ${message}`);
+      if (input.executionId) {
+        await this.finalizeExecution(input.executionId, {
+          sent: false,
+          reason: `fila: ${message}`,
+        });
+      }
+      return { queued: false as const, reason: message };
+    }
+  }
+
+  async finalizeExecution(
+    executionId: string,
+    result: { sent: boolean; reason?: string },
+  ) {
+    const payloadRow = await this.prisma.automationExecution.findUnique({
+      where: { id: executionId },
+      select: { payload: true, status: true },
+    });
+    if (!payloadRow) return;
+    if (
+      payloadRow.status === 'SUCCEEDED' ||
+      payloadRow.status === 'SKIPPED' ||
+      payloadRow.status === 'FAILED'
+    ) {
+      return;
+    }
+
+    const payload =
+      payloadRow.payload && typeof payloadRow.payload === 'object'
+        ? (payloadRow.payload as Record<string, unknown>)
+        : {};
+
+    await this.prisma.automationExecution.update({
+      where: { id: executionId },
+      data: {
+        status: result.sent ? 'SUCCEEDED' : 'FAILED',
+        executedAt: new Date(),
+        errorMessage: result.sent ? null : result.reason || 'erro_envio',
+        payload: { ...payload, sendResult: result },
+      },
+    });
+  }
+
+  isTransientSendFailure(reason?: string) {
+    if (!reason) return true;
+    const r = reason.toLowerCase();
+    if (
+      r.includes('sem_whatsapp') ||
+      r.includes('não conectado') ||
+      r.includes('nao conectado') ||
+      r.includes('invalid') ||
+      r.includes('número') ||
+      r.includes('numero')
+    ) {
+      return false;
+    }
+    return (
+      r.includes('timeout') ||
+      r.includes('429') ||
+      r.includes('rate') ||
+      r.includes('tempor') ||
+      r.includes('econn') ||
+      r.includes('503') ||
+      r.includes('502') ||
+      r.includes('504') ||
+      r.includes('fetch failed') ||
+      r.includes('socket')
+    );
+  }
+
+  /**
    * Webhook Uazapi: mensagem inbound → Lead.
    * Docs: https://docs.uazapi.com/
    */
@@ -552,11 +672,67 @@ class WhatsappController {
   }
 }
 
+@Processor(WHATSAPP_QUEUE, {
+  concurrency: 2,
+  limiter: WHATSAPP_WORKER_LIMITER,
+})
+class WhatsappOutboundProcessor extends WorkerHost {
+  private readonly logger = new Logger(WhatsappOutboundProcessor.name);
+
+  constructor(
+    private readonly whatsapp: WhatsappService,
+    private readonly locks: RedisLockService,
+  ) {
+    super();
+  }
+
+  async process(job: Job<SendWhatsappJob>) {
+    if (job.name !== 'send-text') {
+      this.logger.warn(`Job WhatsApp ignorado: ${job.name}`);
+      return;
+    }
+
+    const { companyId, to, text, executionId } = job.data;
+    await this.locks.throttle(
+      `voltta:wa:gap:${companyId}`,
+      WHATSAPP_COMPANY_GAP_MS,
+    );
+
+    const result = await this.whatsapp.trySend(companyId, to, text);
+
+    if (result.sent) {
+      if (executionId) await this.whatsapp.finalizeExecution(executionId, result);
+      return;
+    }
+
+    if (this.whatsapp.isTransientSendFailure(result.reason)) {
+      throw new Error(result.reason || 'erro_envio_transiente');
+    }
+
+    if (executionId) await this.whatsapp.finalizeExecution(executionId, result);
+  }
+
+  @OnWorkerEvent('failed')
+  async onFailed(job: Job<SendWhatsappJob> | undefined, error: Error) {
+    if (!job?.data?.executionId) return;
+    const maxAttempts = job.opts.attempts ?? 1;
+    if (job.attemptsMade < maxAttempts) return;
+    this.logger.warn(
+      `WhatsApp job esgotou retries (${job.id}): ${error.message}`,
+    );
+    await this.whatsapp.finalizeExecution(job.data.executionId, {
+      sent: false,
+      reason: error.message,
+    });
+  }
+}
+
 @Module({
-  imports: [PrismaModule, forwardRef(() => CustomersModule)],
+  imports: [PrismaModule, QueuesModule, forwardRef(() => CustomersModule)],
   controllers: [WhatsappController],
   providers: [
     WhatsappService,
+    WhatsappOutboundProcessor,
     CredentialsCrypto,
     UazapiProvider,
     { provide: WHATSAPP_PROVIDER, useExisting: UazapiProvider },

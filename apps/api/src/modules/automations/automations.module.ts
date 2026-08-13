@@ -664,16 +664,25 @@ export class AutomationsService {
       }
     }
 
-    const result = await this.whatsapp.trySend(execution.companyId, to, text);
-    await this.prisma.automationExecution.update({
-      where: { id: execution.id },
-      data: {
-        status: result.sent ? 'SUCCEEDED' : 'FAILED',
-        executedAt: new Date(),
-        errorMessage: result.sent ? null : result.reason,
-        payload: { ...payload, to, sendResult: result },
-      },
+    const result = await this.whatsapp.enqueueSend({
+      companyId: execution.companyId,
+      to: to || '',
+      text,
+      executionId: execution.id,
     });
+
+    if (!result.queued) {
+      await this.prisma.automationExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'FAILED',
+          executedAt: new Date(),
+          errorMessage: result.reason || 'falha_ao_enfileirar',
+          payload: { ...payload, to, sendResult: result },
+        },
+      });
+    }
+    // Sucesso: fica RUNNING até o worker WhatsApp finalizar.
   }
 
   private async schedule(

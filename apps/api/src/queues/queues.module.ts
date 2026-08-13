@@ -1,7 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
-import { AUTOMATION_QUEUE } from './queue.constants';
+import { AUTOMATION_QUEUE, WHATSAPP_QUEUE } from './queue.constants';
 import { redisConnectionFromUrl } from './redis.util';
 import { RedisLockService } from './redis-lock.service';
 
@@ -26,6 +26,7 @@ import { RedisLockService } from './redis-lock.service';
       }),
     }),
     BullModule.registerQueue({ name: AUTOMATION_QUEUE }),
+    BullModule.registerQueue({ name: WHATSAPP_QUEUE }),
   ],
   providers: [RedisLockService],
   exports: [BullModule, RedisLockService],

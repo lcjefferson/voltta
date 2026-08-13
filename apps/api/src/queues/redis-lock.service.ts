@@ -34,4 +34,20 @@ export class RedisLockService implements OnModuleDestroy {
     );
     return result === 'OK';
   }
+
+  /**
+   * Garante intervalo mínimo entre usos da mesma chave (ex.: envios WhatsApp por empresa).
+   * Bloqueia o worker até o gap passar.
+   */
+  async throttle(key: string, minIntervalMs: number): Promise<void> {
+    const now = Date.now();
+    const lastRaw = await this.redis.get(key);
+    if (lastRaw) {
+      const wait = minIntervalMs - (now - Number(lastRaw));
+      if (wait > 0) {
+        await new Promise((resolve) => setTimeout(resolve, wait));
+      }
+    }
+    await this.redis.set(key, String(Date.now()), 'PX', Math.max(minIntervalMs * 4, 60_000));
+  }
 }

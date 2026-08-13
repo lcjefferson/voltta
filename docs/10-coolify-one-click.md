@@ -45,6 +45,7 @@ Sem `RESEND_API_KEY`, o link de reset só aparece nos **logs da API**.
 A API usa Redis (`REDIS_URL`) para:
 - atrasar A2/A3/A4 com jobs duráveis
 - processar envios WhatsApp das automações com retry
+- fila `whatsapp-outbound` com rate-limit (~5/s global + gap ~1,2s por empresa)
 - locks distribuídos nos crons (A5 e varrer vencidos)
 
 No Coolify Compose, `REDIS_URL=redis://redis:6379` já vem configurado. Sem Redis saudável, a API sobe mas as automações atrasadas ficam só no banco até o Redis voltar (o cron tenta reenfileirar).
