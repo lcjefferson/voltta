@@ -45,6 +45,7 @@ type Service = {
   id: string;
   name: string;
   returnIntervalDays?: number | null;
+  isActive?: boolean;
 };
 
 const TRIGGERS = [
@@ -160,6 +161,7 @@ export default function AutomacoesPage() {
     queryKey: ["services"],
     queryFn: () => api<Service[]>("/services"),
   });
+  const activeServices = services.filter((s) => s.isActive !== false);
 
   const open = creating || !!editing;
 
@@ -394,7 +396,7 @@ export default function AutomacoesPage() {
                   {...register("serviceId")}
                 >
                   <option value="">Todos os serviços (geral)</option>
-                  {services.map((s) => (
+                  {activeServices.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                       {s.returnIntervalDays

@@ -15,7 +15,12 @@ import { cn } from "@/lib/utils";
 import { useFeedback } from "@/providers/feedback-provider";
 
 type Customer = { id: string; name: string; whatsapp?: string | null };
-type Service = { id: string; name: string; price?: number | string };
+type Service = {
+  id: string;
+  name: string;
+  price?: number | string;
+  isActive?: boolean;
+};
 type Professional = {
   id: string;
   name: string;
@@ -282,6 +287,7 @@ export default function AgendaPage() {
   const pros = professionals.filter(
     (p) => p.isProfessional && p.isActive !== false,
   );
+  const activeServices = services.filter((s) => s.isActive !== false);
 
   useEffect(() => {
     if (filterProfessionalId || user?.role !== "BARBEIRO" || !user?.id) return;
@@ -785,7 +791,7 @@ export default function AgendaPage() {
                 })}
               >
                 <option value="">Selecione</option>
-                {services.map((s) => (
+                {activeServices.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.name}
                     {s.price != null ? ` — ${money(Number(s.price))}` : ""}

@@ -10,7 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTitle } from "@/components/app-page";
+import { ListPagination } from "@/components/list-pagination";
 import { useFeedback } from "@/providers/feedback-provider";
+
+const PAGE_SIZE = 20;
 
 type Lead = {
   id: string;
@@ -23,7 +26,12 @@ type Lead = {
   source?: string;
 };
 
-type LeadsResponse = { data: Lead[]; total: number };
+type LeadsResponse = {
+  data: Lead[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 type LeadForm = {
   name: string;
@@ -40,12 +48,15 @@ export default function LeadsPage() {
   const qc = useQueryClient();
   const { confirm } = useFeedback();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data } = useQuery({
-    queryKey: ["leads"],
-    queryFn: () => api<LeadsResponse>("/leads?limit=100"),
+    queryKey: ["leads", page],
+    queryFn: () =>
+      api<LeadsResponse>(`/leads?page=${page}&limit=${PAGE_SIZE}`),
   });
   const leads = data?.data ?? [];
+  const total = data?.total ?? leads.length;
 
   const { register, handleSubmit, reset } = useForm<LeadForm>();
 
@@ -106,7 +117,7 @@ export default function LeadsPage() {
               automaticamente.
             </p>
           </div>
-          <Badge>{data?.total ?? leads.length} leads</Badge>
+          <Badge>{total} leads</Badge>
         </div>
         <div className="divide-y">
           {leads.length ? (
@@ -240,6 +251,16 @@ export default function LeadsPage() {
             </p>
           )}
         </div>
+        <ListPagination
+          page={page}
+          limit={PAGE_SIZE}
+          total={total}
+          onPageChange={(next) => {
+            setEditingId(null);
+            setPage(next);
+          }}
+          noun="leads"
+        />
       </Card>
     </>
   );

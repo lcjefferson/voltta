@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { api } from "@/lib/api";
@@ -22,12 +23,19 @@ type User = {
   role: { code: RoleCode; name: string };
 };
 
-type FormValues = {
+type CreateForm = {
   name: string;
   email: string;
   password: string;
   role: RoleCode;
   isProfessional: boolean;
+};
+
+type EditForm = {
+  name: string;
+  role: RoleCode;
+  isProfessional: boolean;
+  password?: string;
 };
 
 const roleLabel: Record<RoleCode, string> = {
@@ -39,24 +47,41 @@ const roleLabel: Record<RoleCode, string> = {
 export default function ProfissionaisPage() {
   const qc = useQueryClient();
   const { confirm } = useFeedback();
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: () => api<User[]>("/users"),
   });
 
-  const { register, handleSubmit, reset, watch, setValue } = useForm<FormValues>({
+  const {
+    register: registerCreate,
+    handleSubmit: handleCreateSubmit,
+    reset: resetCreate,
+    watch: watchCreate,
+    setValue: setCreateValue,
+  } = useForm<CreateForm>({
     defaultValues: {
       role: "BARBEIRO",
       isProfessional: true,
     },
   });
 
-  const role = watch("role");
+  const {
+    register: registerEdit,
+    handleSubmit: handleEditSubmit,
+    reset: resetEdit,
+    watch: watchEdit,
+    setValue: setEditValue,
+  } = useForm<EditForm>();
+
+  const createRole = watchCreate("role");
+  const editRole = watchEdit("role");
   const activePros = users.filter((u) => u.isActive && u.isProfessional).length;
   const atLimit = activePros >= 5;
 
   const create = useMutation({
-    mutationFn: (v: FormValues) =>
+    mutationFn: (v: CreateForm) =>
       api("/users", {
         method: "POST",
         body: JSON.stringify({
@@ -69,7 +94,7 @@ export default function ProfissionaisPage() {
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["users"] });
-      reset({
+      resetCreate({
         name: "",
         email: "",
         password: "",
@@ -79,10 +104,32 @@ export default function ProfissionaisPage() {
     },
   });
 
+  const update = useMutation({
+    mutationFn: (payload: EditForm & { id: string }) =>
+      api(`/users/${payload.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name: payload.name,
+          role: payload.role,
+          isProfessional: payload.isProfessional,
+          ...(payload.password?.trim()
+            ? { password: payload.password.trim() }
+            : {}),
+        }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      setEditingId(null);
+    },
+  });
+
   const deactivate = useMutation({
     mutationFn: (id: string) =>
       api(`/users/${id}/deactivate`, { method: "PATCH" }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["users"] });
+      setEditingId(null);
+    },
   });
 
   const reactivate = useMutation({
@@ -95,13 +142,29 @@ export default function ProfissionaisPage() {
   });
 
   const toggleProfessional = useMutation({
-    mutationFn: ({ id, isProfessional }: { id: string; isProfessional: boolean }) =>
+    mutationFn: ({
+      id,
+      isProfessional,
+    }: {
+      id: string;
+      isProfessional: boolean;
+    }) =>
       api(`/users/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ isProfessional }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["users"] }),
   });
+
+  function startEdit(u: User) {
+    setEditingId(u.id);
+    resetEdit({
+      name: u.name,
+      role: u.role.code,
+      isProfessional: u.isProfessional,
+      password: "",
+    });
+  }
 
   return (
     <>
@@ -127,81 +190,188 @@ export default function ProfissionaisPage() {
               </p>
             ) : users.length ? (
               users.map((u) => (
-                <div
-                  className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between"
-                  key={u.id}
-                >
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold">{u.name}</p>
-                      {!u.isActive && (
-                        <Badge className="bg-neutral-200 text-neutral-600">
-                          Inativo
-                        </Badge>
+                <div className="py-4" key={u.id}>
+                  {editingId === u.id ? (
+                    <form
+                      className="space-y-3"
+                      onSubmit={handleEditSubmit((v) =>
+                        update.mutate({ ...v, id: u.id }),
                       )}
-                      {u.isProfessional && u.isActive && (
-                        <Badge>Na agenda</Badge>
+                    >
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <Label>Nome</Label>
+                          <Input
+                            {...registerEdit("name", { required: true })}
+                          />
+                        </div>
+                        <div>
+                          <Label>Papel</Label>
+                          <select
+                            className="flex h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm"
+                            {...registerEdit("role", {
+                              onChange: (e) => {
+                                const next = e.target.value as RoleCode;
+                                if (next === "BARBEIRO") {
+                                  setEditValue("isProfessional", true);
+                                }
+                              },
+                            })}
+                          >
+                            <option value="BARBEIRO">Barbeiro</option>
+                            <option value="RECEPCIONISTA">Recepcionista</option>
+                            <option value="ADMIN">Admin</option>
+                          </select>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Label>Nova senha (opcional)</Label>
+                          <Input
+                            type="password"
+                            placeholder="Deixe em branco para manter"
+                            {...registerEdit("password", { minLength: 6 })}
+                          />
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          className="size-4 accent-[#c4a574]"
+                          {...registerEdit("isProfessional")}
+                          disabled={
+                            !u.isProfessional &&
+                            atLimit &&
+                            editRole !== "BARBEIRO"
+                          }
+                        />
+                        Aparece na agenda / agendamento online
+                      </label>
+                      <p className="text-xs text-neutral-500">
+                        Login: {u.email}
+                      </p>
+                      {update.isError && (
+                        <p className="text-sm text-red-600">
+                          {(update.error as Error).message}
+                        </p>
                       )}
-                    </div>
-                    <p className="truncate text-sm text-neutral-500">{u.email}</p>
-                    <p className="mt-1 text-xs text-neutral-500">
-                      {roleLabel[u.role.code] ?? u.role.name}
-                    </p>
-                  </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="submit" disabled={update.isPending}>
+                          {update.isPending ? "SALVANDO..." : "SALVAR"}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={() => setEditingId(null)}
+                        >
+                          CANCELAR
+                        </Button>
+                        {u.isActive && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="border-red-300 text-red-700 hover:bg-red-50"
+                            disabled={deactivate.isPending}
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: "Desativar profissional",
+                                message: `Desativar ${u.name}?`,
+                                confirmLabel: "DESATIVAR",
+                                tone: "danger",
+                              });
+                              if (ok) deactivate.mutate(u.id);
+                            }}
+                          >
+                            DESATIVAR
+                          </Button>
+                        )}
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold">{u.name}</p>
+                          {!u.isActive && (
+                            <Badge className="bg-neutral-200 text-neutral-600">
+                              Inativo
+                            </Badge>
+                          )}
+                          {u.isProfessional && u.isActive && (
+                            <Badge>Na agenda</Badge>
+                          )}
+                        </div>
+                        <p className="truncate text-sm text-neutral-500">
+                          {u.email}
+                        </p>
+                        <p className="mt-1 text-xs text-neutral-500">
+                          {roleLabel[u.role.code] ?? u.role.name}
+                        </p>
+                      </div>
 
-                  <div className="flex flex-wrap gap-2">
-                    {u.isActive && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 px-3 text-xs"
-                        disabled={
-                          toggleProfessional.isPending ||
-                          (!u.isProfessional && atLimit)
-                        }
-                        onClick={() =>
-                          toggleProfessional.mutate({
-                            id: u.id,
-                            isProfessional: !u.isProfessional,
-                          })
-                        }
-                      >
-                        {u.isProfessional ? "Tirar da agenda" : "Colocar na agenda"}
-                      </Button>
-                    )}
-                    {u.isActive ? (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="h-9 px-3 text-xs text-red-700"
-                        disabled={deactivate.isPending}
-                        onClick={async () => {
-                          const ok = await confirm({
-                            title: "Desativar profissional",
-                            message: `Desativar ${u.name}?`,
-                            confirmLabel: "DESATIVAR",
-                            tone: "danger",
-                          });
-                          if (ok) deactivate.mutate(u.id);
-                        }}
-                      >
-                        Desativar
-                      </Button>
-                    ) : (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-9 px-3 text-xs"
-                        disabled={
-                          reactivate.isPending ||
-                          (u.isProfessional && atLimit)
-                        }
-                        onClick={() => reactivate.mutate(u.id)}
-                      >
-                        Reativar
-                      </Button>
-                    )}
-                  </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-9 px-3 text-xs"
+                          onClick={() => startEdit(u)}
+                        >
+                          EDITAR
+                        </Button>
+                        {u.isActive && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 px-3 text-xs"
+                            disabled={
+                              toggleProfessional.isPending ||
+                              (!u.isProfessional && atLimit)
+                            }
+                            onClick={() =>
+                              toggleProfessional.mutate({
+                                id: u.id,
+                                isProfessional: !u.isProfessional,
+                              })
+                            }
+                          >
+                            {u.isProfessional
+                              ? "Tirar da agenda"
+                              : "Colocar na agenda"}
+                          </Button>
+                        )}
+                        {u.isActive ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            className="h-9 px-3 text-xs text-red-700"
+                            disabled={deactivate.isPending}
+                            onClick={async () => {
+                              const ok = await confirm({
+                                title: "Desativar profissional",
+                                message: `Desativar ${u.name}?`,
+                                confirmLabel: "DESATIVAR",
+                                tone: "danger",
+                              });
+                              if (ok) deactivate.mutate(u.id);
+                            }}
+                          >
+                            Desativar
+                          </Button>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-9 px-3 text-xs"
+                            disabled={
+                              reactivate.isPending ||
+                              (u.isProfessional && atLimit)
+                            }
+                            onClick={() => reactivate.mutate(u.id)}
+                          >
+                            Reativar
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))
             ) : (
@@ -227,13 +397,13 @@ export default function ProfissionaisPage() {
 
           <form
             className="mt-5 space-y-3"
-            onSubmit={handleSubmit((v) => create.mutate(v))}
+            onSubmit={handleCreateSubmit((v) => create.mutate(v))}
           >
             <div>
               <Label>Nome</Label>
               <Input
                 placeholder="João Silva"
-                {...register("name", { required: true })}
+                {...registerCreate("name", { required: true })}
               />
             </div>
             <div>
@@ -241,7 +411,7 @@ export default function ProfissionaisPage() {
               <Input
                 type="email"
                 placeholder="joao@barbearia.com"
-                {...register("email", { required: true })}
+                {...registerCreate("email", { required: true })}
               />
             </div>
             <div>
@@ -249,18 +419,21 @@ export default function ProfissionaisPage() {
               <Input
                 type="password"
                 placeholder="Mínimo 6 caracteres"
-                {...register("password", { required: true, minLength: 6 })}
+                {...registerCreate("password", {
+                  required: true,
+                  minLength: 6,
+                })}
               />
             </div>
             <div>
               <Label>Papel</Label>
               <select
                 className="flex h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm"
-                {...register("role", {
+                {...registerCreate("role", {
                   onChange: (e) => {
                     const next = e.target.value as RoleCode;
                     if (next === "BARBEIRO") {
-                      setValue("isProfessional", true);
+                      setCreateValue("isProfessional", true);
                     }
                   },
                 })}
@@ -274,14 +447,17 @@ export default function ProfissionaisPage() {
               <input
                 type="checkbox"
                 className="size-4 accent-[#c4a574]"
-                {...register("isProfessional")}
-                disabled={atLimit && role === "RECEPCIONISTA"}
+                {...registerCreate("isProfessional")}
+                disabled={atLimit && createRole === "RECEPCIONISTA"}
               />
               Aparece na agenda / agendamento online
             </label>
             <Button
               className="w-full"
-              disabled={create.isPending || (atLimit && watch("isProfessional"))}
+              disabled={
+                create.isPending ||
+                (atLimit && watchCreate("isProfessional"))
+              }
             >
               {create.isPending ? "Salvando..." : "ADICIONAR À EQUIPE"}
             </Button>

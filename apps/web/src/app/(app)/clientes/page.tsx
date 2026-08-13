@@ -9,7 +9,10 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTitle } from "@/components/app-page";
+import { ListPagination } from "@/components/list-pagination";
 import { useFeedback } from "@/providers/feedback-provider";
+
+const PAGE_SIZE = 20;
 
 type Customer = {
   id: string;
@@ -20,7 +23,12 @@ type Customer = {
   lastVisitAt?: string | null;
 };
 
-type CustomersResponse = { data: Customer[]; total: number };
+type CustomersResponse = {
+  data: Customer[];
+  total: number;
+  page: number;
+  limit: number;
+};
 
 type CustomerForm = {
   name: string;
@@ -48,12 +56,15 @@ export default function ClientesPage() {
   const qc = useQueryClient();
   const { confirm } = useFeedback();
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data } = useQuery({
-    queryKey: ["customers"],
-    queryFn: () => api<CustomersResponse>("/customers?limit=100"),
+    queryKey: ["customers", page],
+    queryFn: () =>
+      api<CustomersResponse>(`/customers?page=${page}&limit=${PAGE_SIZE}`),
   });
   const customers = data?.data ?? [];
+  const total = data?.total ?? customers.length;
 
   const {
     register: registerCreate,
@@ -127,7 +138,7 @@ export default function ClientesPage() {
           <div className="mb-5 flex justify-between">
             <h2 className="font-bold">Sua base de clientes</h2>
             <span className="text-sm text-neutral-500">
-              {data?.total ?? customers.length} cadastrados
+              {total} cadastrados
             </span>
           </div>
           <div className="divide-y">
@@ -248,6 +259,16 @@ export default function ClientesPage() {
               </p>
             )}
           </div>
+          <ListPagination
+            page={page}
+            limit={PAGE_SIZE}
+            total={total}
+            onPageChange={(next) => {
+              setEditingId(null);
+              setPage(next);
+            }}
+            noun="clientes"
+          />
         </Card>
         <Card>
           <h2 className="font-bold">Novo cliente</h2>
