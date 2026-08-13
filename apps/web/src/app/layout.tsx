@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Oswald } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
+import { FeedbackProvider } from "@/providers/feedback-provider";
 import {
   OG_IMAGE_ALT,
   OG_IMAGE_URL,
@@ -123,7 +124,9 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          <FeedbackProvider>{children}</FeedbackProvider>
+        </QueryProvider>
       </body>
     </html>
   );

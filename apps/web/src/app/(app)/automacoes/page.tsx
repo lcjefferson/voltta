@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTitle } from "@/components/app-page";
+import { useFeedback } from "@/providers/feedback-provider";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type RuleAction = { type?: string; template?: string };
 type Rule = {
@@ -129,6 +131,7 @@ function triggerLabel(trigger: string) {
 
 export default function AutomacoesPage() {
   const qc = useQueryClient();
+  const { confirm } = useFeedback();
   const [editing, setEditing] = useState<Rule | null>(null);
   const [creating, setCreating] = useState(false);
   const templateRef = useRef<HTMLTextAreaElement | null>(null);
@@ -289,8 +292,14 @@ export default function AutomacoesPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    if (confirm("Remover esta automação?")) remove.mutate(rule.id);
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: "Remover automação",
+                      message: "Remover esta automação?",
+                      confirmLabel: "REMOVER",
+                      tone: "danger",
+                    });
+                    if (ok) remove.mutate(rule.id);
                   }}
                 >
                   <Trash2 className="size-4" />
@@ -350,15 +359,15 @@ export default function AutomacoesPage() {
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {MESSAGE_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className="grid size-8 place-items-center rounded-md text-lg hover:bg-white"
-                      title={`Inserir ${emoji}`}
-                      onClick={() => insertAtCursor(emoji)}
-                    >
-                      {emoji}
-                    </button>
+                    <Tooltip key={emoji} content={`Inserir ${emoji}`} side="bottom">
+                      <button
+                        type="button"
+                        className="grid size-8 place-items-center rounded-md text-lg hover:bg-white"
+                        onClick={() => insertAtCursor(emoji)}
+                      >
+                        {emoji}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
                 <p className="mb-2 mt-3 text-xs font-semibold text-neutral-500">

@@ -9,6 +9,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useFeedback } from "@/providers/feedback-provider";
 
 const schema = z.object({
   email: z.string().email("Informe um e-mail válido"),
@@ -17,6 +18,7 @@ type Values = z.infer<typeof schema>;
 
 export default function ForgotPasswordPage() {
   const [done, setDone] = useState(false);
+  const { alert } = useFeedback();
   const {
     register,
     handleSubmit,
@@ -34,7 +36,10 @@ export default function ForgotPasswordPage() {
       });
       setDone(true);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Tente novamente.");
+      await alert({
+        title: "Não foi possível enviar",
+        message: error instanceof Error ? error.message : "Tente novamente.",
+      });
     }
   }
 

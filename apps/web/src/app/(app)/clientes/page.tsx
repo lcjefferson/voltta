@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTitle } from "@/components/app-page";
+import { useFeedback } from "@/providers/feedback-provider";
 
 type Customer = {
   id: string;
@@ -45,6 +46,7 @@ function displayPhone(c: Customer) {
 
 export default function ClientesPage() {
   const qc = useQueryClient();
+  const { confirm } = useFeedback();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data } = useQuery({
@@ -179,14 +181,14 @@ export default function ClientesPage() {
                           variant="outline"
                           className="border-red-300 text-red-700 hover:bg-red-50"
                           disabled={remove.isPending}
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `Excluir o cliente "${c.name}"? Essa ação não remove o histórico, só some da lista.`,
-                              )
-                            ) {
-                              remove.mutate(c.id);
-                            }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Excluir cliente",
+                              message: `Excluir o cliente "${c.name}"? Essa ação não remove o histórico, só some da lista.`,
+                              confirmLabel: "EXCLUIR",
+                              tone: "danger",
+                            });
+                            if (ok) remove.mutate(c.id);
                           }}
                         >
                           EXCLUIR
@@ -223,14 +225,14 @@ export default function ClientesPage() {
                           variant="ghost"
                           className="text-red-700 hover:bg-red-50"
                           disabled={remove.isPending}
-                          onClick={() => {
-                            if (
-                              confirm(
-                                `Excluir o cliente "${c.name}"? Essa ação não remove o histórico, só some da lista.`,
-                              )
-                            ) {
-                              remove.mutate(c.id);
-                            }
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Excluir cliente",
+                              message: `Excluir o cliente "${c.name}"? Essa ação não remove o histórico, só some da lista.`,
+                              confirmLabel: "EXCLUIR",
+                              tone: "danger",
+                            });
+                            if (ok) remove.mutate(c.id);
                           }}
                         >
                           EXCLUIR

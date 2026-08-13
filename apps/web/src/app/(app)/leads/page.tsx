@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTitle } from "@/components/app-page";
+import { useFeedback } from "@/providers/feedback-provider";
 
 type Lead = {
   id: string;
@@ -37,6 +38,7 @@ function toDateInput(value?: string | null) {
 
 export default function LeadsPage() {
   const qc = useQueryClient();
+  const { confirm } = useFeedback();
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const { data } = useQuery({
@@ -163,14 +165,14 @@ export default function LeadsPage() {
                         variant="outline"
                         className="border-red-300 text-red-700 hover:bg-red-50"
                         disabled={remove.isPending}
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Excluir o lead "${lead.name}"? Ele some da lista.`,
-                            )
-                          ) {
-                            remove.mutate(lead.id);
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Excluir lead",
+                            message: `Excluir o lead "${lead.name}"? Ele some da lista.`,
+                            confirmLabel: "EXCLUIR",
+                            tone: "danger",
+                          });
+                          if (ok) remove.mutate(lead.id);
                         }}
                       >
                         EXCLUIR
@@ -214,14 +216,14 @@ export default function LeadsPage() {
                         variant="ghost"
                         className="text-red-700 hover:bg-red-50"
                         disabled={remove.isPending}
-                        onClick={() => {
-                          if (
-                            confirm(
-                              `Excluir o lead "${lead.name}"? Ele some da lista.`,
-                            )
-                          ) {
-                            remove.mutate(lead.id);
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Excluir lead",
+                            message: `Excluir o lead "${lead.name}"? Ele some da lista.`,
+                            confirmLabel: "EXCLUIR",
+                            tone: "danger",
+                          });
+                          if (ok) remove.mutate(lead.id);
                         }}
                       >
                         EXCLUIR

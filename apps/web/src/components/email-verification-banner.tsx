@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
+import { useFeedback } from "@/providers/feedback-provider";
 
 type Profile = {
   emailVerified?: boolean;
@@ -15,6 +16,7 @@ export function EmailVerificationBanner() {
   const patchUser = useAuthStore((s) => s.patchUser);
   const localUser = useAuthStore((s) => s.user);
   const qc = useQueryClient();
+  const { alert } = useFeedback();
 
   const { data: profile } = useQuery({
     queryKey: ["auth-me"],
@@ -37,12 +39,18 @@ export function EmailVerificationBanner() {
         method: "POST",
         body: JSON.stringify({}),
       }),
-    onSuccess: (data) => {
-      alert(data.message || "Enviamos um novo link de confirmação.");
+    onSuccess: async (data) => {
+      await alert({
+        title: "E-mail enviado",
+        message: data.message || "Enviamos um novo link de confirmação.",
+      });
       qc.invalidateQueries({ queryKey: ["auth-me"] });
     },
-    onError: (error) => {
-      alert(error instanceof Error ? error.message : "Tente novamente.");
+    onError: async (error) => {
+      await alert({
+        title: "Não foi possível enviar",
+        message: error instanceof Error ? error.message : "Tente novamente.",
+      });
     },
   });
 

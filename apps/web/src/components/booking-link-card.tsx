@@ -7,6 +7,7 @@ import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type Company = { name: string; slug: string };
 
@@ -89,15 +90,16 @@ export function BookingLinkCard({ dismissible = false }: Props) {
   return (
     <Card className="relative border-[#c4a574]/40 bg-[#fbf8f2]">
       {dismissible && (
-        <button
-          type="button"
-          onClick={hide}
-          className="absolute right-3 top-3 rounded-md p-1.5 text-neutral-400 transition hover:bg-black/5 hover:text-neutral-700"
-          title="Esconder no dashboard"
-          aria-label="Esconder link público"
-        >
-          <X className="size-4" />
-        </button>
+        <Tooltip content="Esconder no dashboard">
+          <button
+            type="button"
+            onClick={hide}
+            className="absolute right-3 top-3 rounded-md p-1.5 text-neutral-400 transition hover:bg-black/5 hover:text-neutral-700"
+            aria-label="Esconder link público"
+          >
+            <X className="size-4" />
+          </button>
+        </Tooltip>
       )}
       <p className="text-xs font-bold tracking-[.18em] text-[#9b7a44]">
         LINK PÚBLICO

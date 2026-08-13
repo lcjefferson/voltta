@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageTitle } from "@/components/app-page";
 import { useAuthStore } from "@/lib/auth-store";
 import { cn } from "@/lib/utils";
+import { useFeedback } from "@/providers/feedback-provider";
 
 type Customer = { id: string; name: string; whatsapp?: string | null };
 type Service = { id: string; name: string; price?: number | string };
@@ -231,6 +232,7 @@ function CustomerSearch({
 
 export default function AgendaPage() {
   const qc = useQueryClient();
+  const { confirm } = useFeedback();
   const user = useAuthStore((s) => s.user);
   const [customerId, setCustomerId] = useState("");
   const [changingId, setChangingId] = useState<string | null>(null);
@@ -561,14 +563,15 @@ export default function AgendaPage() {
                         <Button
                           variant="outline"
                           className="border-red-300 text-red-700 hover:bg-red-50"
-                          onClick={() => {
-                            if (
-                              confirm(
+                          onClick={async () => {
+                            const ok = await confirm({
+                              title: "Cancelar agendamento",
+                              message:
                                 "Cancelar este agendamento? Ele deixa de ocupar a agenda.",
-                              )
-                            ) {
-                              cancel.mutate(a.id);
-                            }
+                              confirmLabel: "CANCELAR HORÁRIO",
+                              tone: "danger",
+                            });
+                            if (ok) cancel.mutate(a.id);
                           }}
                           disabled={cancel.isPending}
                         >

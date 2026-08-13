@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const nav = [
   ["Dashboard", "/dashboard", LayoutDashboard],
@@ -186,17 +187,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="grid size-9 place-items-center rounded-full bg-[#c4a574] text-sm font-bold">
             {initials}
           </div>
-          <button
-            type="button"
-            className="rounded-md p-2 text-neutral-500 hover:bg-neutral-100"
-            title="Sair"
-            onClick={() => {
-              clearAuth();
-              router.push("/login");
-            }}
-          >
-            <LogOut className="size-4" />
-          </button>
+          <Tooltip content="Sair">
+            <button
+              type="button"
+              className="rounded-md p-2 text-neutral-500 hover:bg-neutral-100"
+              aria-label="Sair"
+              onClick={() => {
+                clearAuth();
+                router.push("/login");
+              }}
+            >
+              <LogOut className="size-4" />
+            </button>
+          </Tooltip>
         </div>
       </header>
       <main className="p-5 lg:ml-64 lg:p-8">{children}</main>

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTitle } from "@/components/app-page";
+import { Tooltip } from "@/components/ui/tooltip";
+import { useFeedback } from "@/providers/feedback-provider";
 
 type Subscription = {
   status?: string;
@@ -21,6 +23,7 @@ type Company = {
 };
 
 export default function AssinaturaPage() {
+  const { alert } = useFeedback();
   const { data: sub } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => api<Subscription>("/billing/subscription"),
@@ -39,13 +42,15 @@ export default function AssinaturaPage() {
           cancelUrl: `${window.location.origin}/assinatura?cancel=1`,
         }),
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) window.location.href = data.url;
       else
-        alert(
-          data.error ||
+        await alert({
+          title: "Checkout indisponível",
+          message:
+            data.error ||
             "Configure STRIPE_SECRET_KEY (sk_...) e STRIPE_PRICE_ID (price_...) no Coolify da API e faça Deploy.",
-        );
+        });
     },
   });
 
@@ -57,12 +62,13 @@ export default function AssinaturaPage() {
           returnUrl: `${window.location.origin}/assinatura`,
         }),
       }),
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       if (data.url) window.location.href = data.url;
       else
-        alert(
-          "Portal Stripe indisponível. Conclua o checkout primeiro.",
-        );
+        await alert({
+          title: "Portal indisponível",
+          message: "Conclua o checkout primeiro.",
+        });
     },
   });
 
@@ -108,18 +114,21 @@ export default function AssinaturaPage() {
           >
             {checkout.isPending ? "ABRINDO..." : "IR PARA O CHECKOUT"}
           </Button>
-          <Button
-            variant="outline"
-            disabled={portal.isPending || !canManage}
-            onClick={() => portal.mutate()}
-            title={
+          <Tooltip
+            content={
               canManage
                 ? "Abrir portal Stripe"
                 : "Conclua o checkout antes de gerenciar"
             }
           >
-            {portal.isPending ? "ABRINDO..." : "GERENCIAR ASSINATURA"}
-          </Button>
+            <Button
+              variant="outline"
+              disabled={portal.isPending || !canManage}
+              onClick={() => portal.mutate()}
+            >
+              {portal.isPending ? "ABRINDO..." : "GERENCIAR ASSINATURA"}
+            </Button>
+          </Tooltip>
         </div>
         {!canManage && (
           <p className="mt-4 text-sm text-neutral-500">

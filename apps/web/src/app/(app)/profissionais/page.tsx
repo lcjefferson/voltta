@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTitle } from "@/components/app-page";
+import { useFeedback } from "@/providers/feedback-provider";
 
 type RoleCode = "ADMIN" | "BARBEIRO" | "RECEPCIONISTA";
 
@@ -37,6 +38,7 @@ const roleLabel: Record<RoleCode, string> = {
 
 export default function ProfissionaisPage() {
   const qc = useQueryClient();
+  const { confirm } = useFeedback();
   const { data: users = [], isLoading } = useQuery({
     queryKey: ["users"],
     queryFn: () => api<User[]>("/users"),
@@ -173,10 +175,14 @@ export default function ProfissionaisPage() {
                         variant="ghost"
                         className="h-9 px-3 text-xs text-red-700"
                         disabled={deactivate.isPending}
-                        onClick={() => {
-                          if (confirm(`Desativar ${u.name}?`)) {
-                            deactivate.mutate(u.id);
-                          }
+                        onClick={async () => {
+                          const ok = await confirm({
+                            title: "Desativar profissional",
+                            message: `Desativar ${u.name}?`,
+                            confirmLabel: "DESATIVAR",
+                            tone: "danger",
+                          });
+                          if (ok) deactivate.mutate(u.id);
                         }}
                       >
                         Desativar

@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useFeedback } from "@/providers/feedback-provider";
 
 const schema = z
   .object({
@@ -27,6 +28,7 @@ function ResetPasswordForm() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
   const [done, setDone] = useState(false);
+  const { alert } = useFeedback();
   const {
     register,
     handleSubmit,
@@ -38,7 +40,10 @@ function ResetPasswordForm() {
 
   async function submit(values: Values) {
     if (!token) {
-      alert("Link inválido. Solicite uma nova redefinição de senha.");
+      await alert({
+        title: "Link inválido",
+        message: "Solicite uma nova redefinição de senha.",
+      });
       return;
     }
     try {
@@ -49,7 +54,10 @@ function ResetPasswordForm() {
       setDone(true);
       setTimeout(() => router.push("/login"), 1800);
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Tente novamente.");
+      await alert({
+        title: "Não foi possível salvar",
+        message: error instanceof Error ? error.message : "Tente novamente.",
+      });
     }
   }
 
