@@ -46,6 +46,11 @@ class CreateRuleDto {
   @IsObject()
   conditions?: Record<string, unknown>;
 
+  /** A4: vincula a campanha a um serviço específico (opcional). */
+  @IsOptional()
+  @IsString()
+  serviceId?: string | null;
+
   @IsOptional()
   @IsString()
   template?: string;
@@ -69,6 +74,10 @@ class UpdateRuleDto {
   @IsOptional()
   @IsObject()
   conditions?: Record<string, unknown>;
+
+  @IsOptional()
+  @IsString()
+  serviceId?: string | null;
 
   @IsOptional()
   @IsString()
@@ -99,6 +108,39 @@ function buildActions(template?: string, actions?: object) {
         'Olá {{nome}}, seu horário é {{data}} às {{hora}}. {{link}}',
     },
   ];
+}
+
+function ruleServiceId(
+  conditions: Prisma.JsonValue | Record<string, unknown> | null | undefined,
+): string | null {
+  if (!conditions || typeof conditions !== 'object' || Array.isArray(conditions)) {
+    return null;
+  }
+  const value = (conditions as Record<string, unknown>).serviceId;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function buildConditions(input: {
+  conditions?: Record<string, unknown>;
+  serviceId?: string | null;
+  trigger: string;
+}): Prisma.InputJsonValue {
+  const base =
+    input.conditions && typeof input.conditions === 'object'
+      ? { ...input.conditions }
+      : {};
+  if (input.trigger === 'A4') {
+    if (input.serviceId === undefined) {
+      // keep existing serviceId from conditions if provided
+    } else if (input.serviceId) {
+      base.serviceId = input.serviceId;
+    } else {
+      delete base.serviceId;
+    }
+  } else {
+    delete base.serviceId;
+  }
+  return base as Prisma.InputJsonValue;
 }
 
 function localCalendar(now: Date, timeZone: string) {
@@ -330,10 +372,14 @@ export class AutomationsService {
     const version = appointment.startsAt.toISOString();
 
     if (delayA2 > 0) {
-      await this.schedule(appointmentId, 'A2', delayA2, version);
+      await this.schedule(appointmentId, 'A2', delayA2, {
+        keyVersion: version,
+      });
     }
     if (delayA3 > 0) {
-      await this.schedule(appointmentId, 'A3', delayA3, version);
+      await this.schedule(appointmentId, 'A3', delayA3, {
+        keyVersion: version,
+      });
     }
   }
 
@@ -352,25 +398,64 @@ export class AutomationsService {
   async scheduleReturnCampaign(appointmentId: string) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
-      include: { services: true, customer: true },
+      include: {
+        services: { include: { service: true } },
+        customer: true,
+      },
     });
     if (!appointment) return;
     if (!appointment.customer.marketingOptIn) return;
 
-    const intervalDays = appointment.services
-      .map((s) => s.returnIntervalDays || 0)
-      .filter((d) => d > 0)
-      .reduce((max, d) => Math.max(max, d), 0);
-
-    // Sem intervalo de retorno no serviço → A4 não agenda (PRD)
-    if (!intervalDays) {
+    const withInterval = appointment.services.filter(
+      (s) => (s.returnIntervalDays || 0) > 0,
+    );
+    if (!withInterval.length) {
       this.logger.log(
         `A4 ignorada para ${appointmentId}: serviço sem returnIntervalDays`,
       );
       return;
     }
 
-    await this.schedule(appointmentId, 'A4', intervalDays * 86400_000);
+    const rules = await this.prisma.automationRule.findMany({
+      where: {
+        companyId: appointment.companyId,
+        trigger: 'A4',
+        isActive: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (!rules.length) return;
+
+    const generic = rules.find((r) => !ruleServiceId(r.conditions));
+    const matchedServiceIds = new Set<string>();
+
+    for (const line of withInterval) {
+      const specific = rules.find(
+        (r) => ruleServiceId(r.conditions) === line.serviceId,
+      );
+      if (!specific) continue;
+      matchedServiceIds.add(line.serviceId);
+      await this.schedule(appointmentId, 'A4', line.returnIntervalDays! * 86400_000, {
+        keyVersion: line.serviceId,
+        ruleId: specific.id,
+        extraVars: { servico: line.service.name },
+      });
+    }
+
+    const unmatched = withInterval.filter(
+      (s) => !matchedServiceIds.has(s.serviceId),
+    );
+    if (generic && unmatched.length) {
+      const intervalDays = unmatched
+        .map((s) => s.returnIntervalDays || 0)
+        .reduce((max, d) => Math.max(max, d), 0);
+      const servico = unmatched.map((s) => s.service.name).join(', ');
+      await this.schedule(appointmentId, 'A4', intervalDays * 86400_000, {
+        keyVersion: 'generic',
+        ruleId: generic.id,
+        extraVars: { servico },
+      });
+    }
   }
 
   private async skipPendingReminders(appointmentId: string, reason: string) {
@@ -546,7 +631,11 @@ export class AutomationsService {
     appointmentId: string,
     trigger: string,
     delayMs: number,
-    keyVersion?: string,
+    options?: {
+      keyVersion?: string;
+      ruleId?: string;
+      extraVars?: Record<string, string>;
+    },
   ) {
     const appointment = await this.prisma.appointment.findUnique({
       where: { id: appointmentId },
@@ -554,25 +643,38 @@ export class AutomationsService {
     });
     if (!appointment) return;
 
-    const rules = await this.prisma.automationRule.findMany({
-      where: {
-        companyId: appointment.companyId,
-        trigger,
-        isActive: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
-    const rule = rules[0];
-    if (!rule) return;
+    let rule = options?.ruleId
+      ? await this.prisma.automationRule.findFirst({
+          where: {
+            id: options.ruleId,
+            companyId: appointment.companyId,
+            trigger,
+            isActive: true,
+          },
+        })
+      : null;
 
-    if (rules.length > 1) {
-      await this.prisma.automationRule.updateMany({
+    if (!rule) {
+      const rules = await this.prisma.automationRule.findMany({
         where: {
-          id: { in: rules.slice(1).map((r) => r.id) },
+          companyId: appointment.companyId,
+          trigger,
+          isActive: true,
         },
-        data: { isActive: false },
+        orderBy: { createdAt: 'asc' },
       });
+      rule = rules[0] || null;
+      // A1/A2/A3/A5: mantém só uma ativa. A4 pode ter várias (por serviço).
+      if (trigger !== 'A4' && rules.length > 1) {
+        await this.prisma.automationRule.updateMany({
+          where: {
+            id: { in: rules.slice(1).map((r) => r.id) },
+          },
+          data: { isActive: false },
+        });
+      }
     }
+    if (!rule) return;
 
     if (trigger === 'A4' && !appointment.customer.marketingOptIn) return;
 
@@ -592,6 +694,8 @@ export class AutomationsService {
         minute: '2-digit',
       }),
       link: `${webUrl}/agendar/${appointment.company.slug}`,
+      servico: options?.extraVars?.servico || 'serviço',
+      ...(options?.extraVars || {}),
     };
 
     const actions = Array.isArray(rule.actions)
@@ -601,13 +705,15 @@ export class AutomationsService {
       A1: 'Olá {{nome}}\nSeu horário está confirmado para {{data}} às {{hora}}.',
       A2: 'Olá {{nome}}\nLembrete: seu horário é amanhã, {{data}} às {{hora}}.',
       A3: 'Olá {{nome}}\nSeu horário é hoje às {{hora}}. Te esperamos!',
-      A4: 'Olá {{nome}}\nEstá na hora de renovar seu visual.\nClique aqui: {{link}}',
+      A4: 'Olá {{nome}}\nJá faz um tempo desde o seu {{servico}}. Que tal agendar de novo?\n{{link}}',
+      A5: 'Olá {{nome}}\nFeliz aniversário! Que tal agendar um horário especial? {{link}}',
     };
     const template =
       actions[0]?.template ||
       defaultTemplates[trigger] ||
       'Olá {{nome}}, seu horário é {{data}} às {{hora}}. {{link}}';
     const text = renderTemplate(template, vars);
+    const keyVersion = options?.keyVersion;
     const key = keyVersion
       ? `${trigger}:${appointmentId}:${keyVersion}`
       : `${trigger}:${appointmentId}`;
@@ -629,11 +735,9 @@ export class AutomationsService {
         },
       });
     } catch {
-      // Já agendada/enviada para este trigger+agendamento(+versão)
       return;
     }
 
-    // Disparo imediato (A1 / A4 com delay 0) sem esperar o cron
     if (delayMs <= 0) {
       await this.processDueExecutions();
     }
@@ -654,8 +758,43 @@ export class AutomationsService {
     return rule;
   }
 
+  private async assertNoA4Conflict(
+    companyId: string,
+    serviceId: string | null,
+    excludeId?: string,
+  ) {
+    const active = await this.prisma.automationRule.findMany({
+      where: {
+        companyId,
+        trigger: 'A4',
+        isActive: true,
+        ...(excludeId ? { id: { not: excludeId } } : {}),
+      },
+    });
+    const conflict = active.find(
+      (r) => ruleServiceId(r.conditions) === serviceId,
+    );
+    if (conflict) {
+      throw new BadRequestException(
+        serviceId
+          ? 'Já existe uma campanha de retorno ativa para este serviço.'
+          : 'Já existe uma campanha de retorno geral ativa. Edite-a ou vincule esta a um serviço.',
+      );
+    }
+  }
+
   async create(companyId: string, dto: CreateRuleDto) {
-    if (['A1', 'A2', 'A3', 'A4', 'A5'].includes(dto.trigger)) {
+    if (dto.trigger === 'A4') {
+      if (dto.serviceId) {
+        const service = await this.prisma.service.findFirst({
+          where: { id: dto.serviceId, companyId, isActive: true },
+        });
+        if (!service) {
+          throw new BadRequestException('Serviço inválido para a campanha');
+        }
+      }
+      await this.assertNoA4Conflict(companyId, dto.serviceId || null);
+    } else if (['A1', 'A2', 'A3', 'A5'].includes(dto.trigger)) {
       const exists = await this.prisma.automationRule.findFirst({
         where: { companyId, trigger: dto.trigger, isActive: true },
       });
@@ -671,7 +810,11 @@ export class AutomationsService {
         companyId,
         name: dto.name,
         trigger: dto.trigger,
-        conditions: (dto.conditions || {}) as Prisma.InputJsonValue,
+        conditions: buildConditions({
+          conditions: dto.conditions,
+          serviceId: dto.serviceId,
+          trigger: dto.trigger,
+        }),
         actions: buildActions(dto.template) as Prisma.InputJsonValue,
         isActive: dto.isActive ?? true,
       },
@@ -683,9 +826,24 @@ export class AutomationsService {
 
     const nextTrigger = dto.trigger ?? current.trigger;
     const nextActive = dto.isActive ?? current.isActive;
-    if (
+    const nextServiceId =
+      dto.serviceId !== undefined
+        ? dto.serviceId || null
+        : ruleServiceId(current.conditions);
+
+    if (nextActive && nextTrigger === 'A4') {
+      if (nextServiceId) {
+        const service = await this.prisma.service.findFirst({
+          where: { id: nextServiceId, companyId, isActive: true },
+        });
+        if (!service) {
+          throw new BadRequestException('Serviço inválido para a campanha');
+        }
+      }
+      await this.assertNoA4Conflict(companyId, nextServiceId, id);
+    } else if (
       nextActive &&
-      ['A1', 'A2', 'A3', 'A4', 'A5'].includes(nextTrigger)
+      ['A1', 'A2', 'A3', 'A5'].includes(nextTrigger)
     ) {
       const conflict = await this.prisma.automationRule.findFirst({
         where: {
@@ -705,10 +863,29 @@ export class AutomationsService {
     const data: Record<string, unknown> = {};
     if (dto.name !== undefined) data.name = dto.name;
     if (dto.trigger !== undefined) data.trigger = dto.trigger;
-    if (dto.conditions !== undefined) data.conditions = dto.conditions;
     if (dto.isActive !== undefined) data.isActive = dto.isActive;
     if (dto.actions !== undefined) data.actions = dto.actions;
     if (dto.template !== undefined) data.actions = buildActions(dto.template);
+    if (
+      dto.conditions !== undefined ||
+      dto.serviceId !== undefined ||
+      dto.trigger !== undefined
+    ) {
+      data.conditions = buildConditions({
+        conditions:
+          dto.conditions ??
+          (typeof current.conditions === 'object' &&
+          current.conditions &&
+          !Array.isArray(current.conditions)
+            ? (current.conditions as Record<string, unknown>)
+            : {}),
+        serviceId:
+          dto.serviceId !== undefined
+            ? dto.serviceId
+            : ruleServiceId(current.conditions),
+        trigger: nextTrigger,
+      });
+    }
 
     if (!Object.keys(data).length) {
       throw new BadRequestException('Nenhum campo para atualizar');

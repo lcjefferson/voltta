@@ -38,6 +38,13 @@ type FormValues = {
   trigger: string;
   template: string;
   isActive: boolean;
+  serviceId: string;
+};
+
+type Service = {
+  id: string;
+  name: string;
+  returnIntervalDays?: number | null;
 };
 
 const TRIGGERS = [
@@ -63,7 +70,7 @@ const TRIGGERS = [
     value: "A4",
     label: "A4 — Campanha de retorno",
     defaultTemplate:
-      "Olá {{nome}}\nEstá na hora de renovar seu visual.\nClique aqui: {{link}}",
+      "Olá {{nome}}\nJá faz um tempo desde o seu {{servico}}. Que tal agendar de novo?\n{{link}}",
   },
   {
     value: "A5",
@@ -125,6 +132,11 @@ function getTemplate(rule?: Rule | null) {
   );
 }
 
+function getRuleServiceId(rule?: Rule | null) {
+  const value = rule?.conditions?.serviceId;
+  return typeof value === "string" ? value : "";
+}
+
 function triggerLabel(trigger: string) {
   return TRIGGERS.find((t) => t.value === trigger)?.label || trigger;
 }
@@ -144,6 +156,10 @@ export default function AutomacoesPage() {
     queryKey: ["automation-executions"],
     queryFn: () => api<Execution[]>("/automations/executions"),
   });
+  const { data: services = [] } = useQuery({
+    queryKey: ["services"],
+    queryFn: () => api<Service[]>("/services"),
+  });
 
   const open = creating || !!editing;
 
@@ -154,6 +170,7 @@ export default function AutomacoesPage() {
         trigger: editing.trigger,
         template: getTemplate(editing),
         isActive: editing.isActive,
+        serviceId: getRuleServiceId(editing),
       };
     }
     return {
@@ -161,6 +178,7 @@ export default function AutomacoesPage() {
       trigger: "A1",
       template: TRIGGERS[0].defaultTemplate,
       isActive: true,
+      serviceId: "",
     };
   }, [editing, creating]);
 
@@ -174,6 +192,11 @@ export default function AutomacoesPage() {
     "template",
     { required: true },
   );
+
+  function serviceName(serviceId?: string) {
+    if (!serviceId) return null;
+    return services.find((s) => s.id === serviceId)?.name || "Serviço";
+  }
 
   function insertAtCursor(snippet: string) {
     const el = templateRef.current;
@@ -203,6 +226,9 @@ export default function AutomacoesPage() {
         trigger: values.trigger,
         template: values.template,
         isActive: values.isActive,
+        ...(values.trigger === "A4"
+          ? { serviceId: values.serviceId || null }
+          : { serviceId: null }),
       };
       if (editing) {
         return api(`/automations/rules/${editing.id}`, {
@@ -268,6 +294,10 @@ export default function AutomacoesPage() {
               </div>
               <p className="mt-2 text-sm text-neutral-500">
                 {triggerLabel(rule.trigger)}
+                {rule.trigger === "A4" &&
+                  (getRuleServiceId(rule)
+                    ? ` · ${serviceName(getRuleServiceId(rule))}`
+                    : " · todos os serviços")}
               </p>
               <p className="mt-3 line-clamp-3 text-sm text-neutral-600">
                 {getTemplate(rule)}
@@ -339,8 +369,13 @@ export default function AutomacoesPage() {
                 className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
                 {...register("trigger", {
                   onChange: (e) => {
-                    const found = TRIGGERS.find((t) => t.value === e.target.value);
-                    if (found && !editing) setValue("template", found.defaultTemplate);
+                    const found = TRIGGERS.find(
+                      (t) => t.value === e.target.value,
+                    );
+                    if (found && !editing) {
+                      setValue("template", found.defaultTemplate);
+                    }
+                    if (e.target.value !== "A4") setValue("serviceId", "");
                   },
                 })}
               >
@@ -351,6 +386,29 @@ export default function AutomacoesPage() {
                 ))}
               </select>
             </div>
+            {selectedTrigger === "A4" && (
+              <div>
+                <Label>Serviço da campanha</Label>
+                <select
+                  className="mt-1 w-full rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm"
+                  {...register("serviceId")}
+                >
+                  <option value="">Todos os serviços (geral)</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                      {s.returnIntervalDays
+                        ? ` · retorno ${s.returnIntervalDays} dias`
+                        : " · sem intervalo de retorno"}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-neutral-500">
+                  Crie uma A4 por serviço para personalizar o texto. O intervalo
+                  de retorno continua vindo do cadastro do serviço.
+                </p>
+              </div>
+            )}
             <div>
               <Label>Mensagem WhatsApp</Label>
               <div className="mt-2 rounded-md border border-neutral-200 bg-neutral-50 p-2">
@@ -359,7 +417,11 @@ export default function AutomacoesPage() {
                 </p>
                 <div className="flex flex-wrap gap-1">
                   {MESSAGE_EMOJIS.map((emoji) => (
-                    <Tooltip key={emoji} content={`Inserir ${emoji}`} side="bottom">
+                    <Tooltip
+                      key={emoji}
+                      content={`Inserir ${emoji}`}
+                      side="bottom"
+                    >
                       <button
                         type="button"
                         className="grid size-8 place-items-center rounded-md text-lg hover:bg-white"
@@ -374,18 +436,19 @@ export default function AutomacoesPage() {
                   Variáveis
                 </p>
                 <div className="flex flex-wrap gap-1">
-                  {["{{nome}}", "{{data}}", "{{hora}}", "{{link}}"].map(
-                    (variable) => (
-                      <button
-                        key={variable}
-                        type="button"
-                        className="rounded-md border border-neutral-200 bg-white px-2 py-1 font-mono text-xs hover:border-[#c4a574]"
-                        onClick={() => insertAtCursor(variable)}
-                      >
-                        {variable}
-                      </button>
-                    ),
-                  )}
+                  {(selectedTrigger === "A4"
+                    ? ["{{nome}}", "{{servico}}", "{{data}}", "{{hora}}", "{{link}}"]
+                    : ["{{nome}}", "{{data}}", "{{hora}}", "{{link}}"]
+                  ).map((variable) => (
+                    <button
+                      key={variable}
+                      type="button"
+                      className="rounded-md border border-neutral-200 bg-white px-2 py-1 font-mono text-xs hover:border-[#c4a574]"
+                      onClick={() => insertAtCursor(variable)}
+                    >
+                      {variable}
+                    </button>
+                  ))}
                 </div>
               </div>
               <textarea

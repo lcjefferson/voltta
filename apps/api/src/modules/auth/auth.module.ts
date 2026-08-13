@@ -443,7 +443,7 @@ const defaultRules = () => [
       {
         type: 'whatsapp',
         template:
-          'Olá {{nome}}\nEstá na hora de renovar seu visual.\nClique aqui: {{link}}',
+          'Olá {{nome}}\nJá faz um tempo desde o seu {{servico}}. Que tal agendar de novo?\n{{link}}',
       },
     ],
   },
