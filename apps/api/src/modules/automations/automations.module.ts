@@ -15,6 +15,8 @@ import {
   Inject,
 } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { InjectQueue, Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job, Queue } from 'bullmq';
 import {
   IsBoolean,
   IsObject,
@@ -32,6 +34,12 @@ import {
   RoleCode,
 } from '@prisma/client';
 import { WhatsappModule, WhatsappService } from '../whatsapp/whatsapp.module';
+import { QueuesModule } from '../../queues/queues.module';
+import { RedisLockService } from '../../queues/redis-lock.service';
+import {
+  AUTOMATION_QUEUE,
+  type RunExecutionJob,
+} from '../../queues/queue.constants';
 
 class CreateRuleDto {
   @IsString()
@@ -172,11 +180,22 @@ export class AutomationsService {
     private readonly prisma: PrismaService,
     @Inject(forwardRef(() => WhatsappService))
     private readonly whatsapp: WhatsappService,
+    @InjectQueue(AUTOMATION_QUEUE)
+    private readonly automationQueue: Queue<RunExecutionJob>,
+    private readonly locks: RedisLockService,
   ) {}
 
   /** A cada hora: envia A5 às 08:00 no fuso da empresa. */
   @Cron(CronExpression.EVERY_HOUR)
   async handleBirthdayCron() {
+    const locked = await this.locks.tryAcquire(
+      'voltta:lock:a5-birthday',
+      50 * 60,
+    );
+    if (!locked) {
+      this.logger.debug('A5 birthday — outro processo já está no lock');
+      return;
+    }
     await this.runBirthdayCampaigns();
   }
 
@@ -252,8 +271,7 @@ export class AutomationsService {
             customer,
             dateKey: local.dateKey,
           });
-          if (result === 'sent') sent += 1;
-          else if (result === 'failed') failed += 1;
+          if (result === 'queued') sent += 1;
           else skipped += 1;
         }
       }
@@ -323,35 +341,8 @@ export class AutomationsService {
       return 'duplicate';
     }
 
-    const claimed = await this.prisma.automationExecution.updateMany({
-      where: { id: executionId, status: 'SCHEDULED' },
-      data: { status: 'RUNNING' },
-    });
-    if (!claimed.count) return 'skipped';
-
-    if (!to) {
-      await this.prisma.automationExecution.update({
-        where: { id: executionId },
-        data: {
-          status: 'SKIPPED',
-          executedAt: new Date(),
-          errorMessage: 'sem_whatsapp',
-        },
-      });
-      return 'skipped';
-    }
-
-    const result = await this.whatsapp.trySend(input.company.id, to, text);
-    await this.prisma.automationExecution.update({
-      where: { id: executionId },
-      data: {
-        status: result.sent ? 'SUCCEEDED' : 'FAILED',
-        executedAt: new Date(),
-        errorMessage: result.sent ? null : result.reason,
-        payload: { ...vars, text, to, sendResult: result },
-      },
-    });
-    return result.sent ? 'sent' : 'failed';
+    await this.enqueueExecution(executionId, 0);
+    return 'queued';
   }
 
   async scheduleForAppointmentCreated(appointmentId: string) {
@@ -459,25 +450,40 @@ export class AutomationsService {
   }
 
   private async skipPendingReminders(appointmentId: string, reason: string) {
-    await this.prisma.automationExecution.updateMany({
+    const pending = await this.prisma.automationExecution.findMany({
       where: {
         appointmentId,
         status: 'SCHEDULED',
         rule: { trigger: { in: ['A2', 'A3'] } },
       },
+      select: { id: true },
+    });
+    if (!pending.length) return;
+
+    await this.prisma.automationExecution.updateMany({
+      where: { id: { in: pending.map((p) => p.id) } },
       data: {
         status: 'SKIPPED',
         executedAt: new Date(),
         errorMessage: reason,
       },
     });
+
+    for (const item of pending) {
+      await this.removeExecutionJob(item.id);
+    }
   }
 
   private dueRunning = false;
 
-  /** Processa execuções vencidas no banco (sobrevive a restart da API). */
+  /** Safety-net: re-enfileira execuções vencidas que ficaram só no banco. */
   @Cron(CronExpression.EVERY_MINUTE)
   async processDueExecutions() {
+    const locked = await this.locks.tryAcquire(
+      'voltta:lock:automation-due',
+      50,
+    );
+    if (!locked) return;
     if (this.dueRunning) return;
     this.dueRunning = true;
     try {
@@ -486,28 +492,71 @@ export class AutomationsService {
           status: 'SCHEDULED',
           scheduledFor: { lte: new Date() },
         },
-        include: {
-          rule: { select: { trigger: true } },
-          appointment: { select: { id: true, status: true } },
-          customer: {
-            select: {
-              id: true,
-              name: true,
-              whatsapp: true,
-              phone: true,
-              marketingOptIn: true,
-            },
-          },
-        },
+        select: { id: true },
         orderBy: { scheduledFor: 'asc' },
-        take: 50,
+        take: 100,
       });
 
       for (const execution of due) {
-        await this.executeDue(execution);
+        await this.enqueueExecution(execution.id, 0);
       }
     } finally {
       this.dueRunning = false;
+    }
+  }
+
+  async processExecutionById(executionId: string) {
+    const execution = await this.prisma.automationExecution.findUnique({
+      where: { id: executionId },
+      include: {
+        rule: { select: { trigger: true } },
+        appointment: { select: { id: true, status: true } },
+        customer: {
+          select: {
+            id: true,
+            name: true,
+            whatsapp: true,
+            phone: true,
+            marketingOptIn: true,
+          },
+        },
+      },
+    });
+    if (!execution) return;
+    await this.executeDue(execution);
+  }
+
+  private jobIdFor(executionId: string) {
+    return `exec:${executionId}`;
+  }
+
+  private async enqueueExecution(executionId: string, delayMs: number) {
+    try {
+      await this.automationQueue.add(
+        'run-execution',
+        { executionId },
+        {
+          jobId: this.jobIdFor(executionId),
+          delay: Math.max(0, Math.floor(delayMs)),
+        },
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // jobId duplicado = já enfileirado
+      if (!/already exists|Job with this id/i.test(message)) {
+        this.logger.warn(
+          `Falha ao enfileirar execução ${executionId}: ${message}`,
+        );
+      }
+    }
+  }
+
+  private async removeExecutionJob(executionId: string) {
+    try {
+      const job = await this.automationQueue.getJob(this.jobIdFor(executionId));
+      if (job) await job.remove();
+    } catch {
+      /* ignore */
     }
   }
 
@@ -722,7 +771,7 @@ export class AutomationsService {
     const scheduledFor = new Date(Date.now() + Math.max(0, delayMs));
 
     try {
-      await this.prisma.automationExecution.create({
+      const execution = await this.prisma.automationExecution.create({
         data: {
           companyId: appointment.companyId,
           ruleId: rule.id,
@@ -734,12 +783,9 @@ export class AutomationsService {
           payload: { ...vars, text, to, trigger },
         },
       });
+      await this.enqueueExecution(execution.id, delayMs);
     } catch {
       return;
-    }
-
-    if (delayMs <= 0) {
-      await this.processDueExecutions();
     }
   }
 
@@ -965,10 +1011,31 @@ class AutomationsController {
   }
 }
 
+@Processor(AUTOMATION_QUEUE)
+class AutomationProcessor extends WorkerHost {
+  private readonly logger = new Logger(AutomationProcessor.name);
+
+  constructor(private readonly automations: AutomationsService) {
+    super();
+  }
+
+  async process(job: Job<RunExecutionJob>) {
+    if (job.name !== 'run-execution') {
+      this.logger.warn(`Job ignorado: ${job.name}`);
+      return;
+    }
+    await this.automations.processExecutionById(job.data.executionId);
+  }
+}
+
 @Module({
-  imports: [PrismaModule, forwardRef(() => WhatsappModule)],
+  imports: [
+    PrismaModule,
+    QueuesModule,
+    forwardRef(() => WhatsappModule),
+  ],
   controllers: [AutomationsController],
-  providers: [AutomationsService],
+  providers: [AutomationsService, AutomationProcessor],
   exports: [AutomationsService],
 })
 export class AutomationsModule {}

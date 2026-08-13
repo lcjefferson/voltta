@@ -41,6 +41,14 @@ Roles (ADMIN / BARBEIRO / RECEPCIONISTA) são seedadas automaticamente no boot d
 
 Sem `RESEND_API_KEY`, o link de reset só aparece nos **logs da API**.
 
+## Filas (BullMQ + Redis)
+A API usa Redis (`REDIS_URL`) para:
+- atrasar A2/A3/A4 com jobs duráveis
+- processar envios WhatsApp das automações com retry
+- locks distribuídos nos crons (A5 e varrer vencidos)
+
+No Coolify Compose, `REDIS_URL=redis://redis:6379` já vem configurado. Sem Redis saudável, a API sobe mas as automações atrasadas ficam só no banco até o Redis voltar (o cron tenta reenfileirar).
+
 ## Confirmação de e-mail
 No cadastro (e ao trocar o e-mail em Configurações), a API envia link `/verify-email?token=...`.
 

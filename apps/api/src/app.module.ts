@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
+import { QueuesModule } from './queues/queues.module';
 import { JwtAuthGuard, RolesGuard } from './common/guards/auth.guards';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
@@ -26,6 +27,7 @@ import { TrialRemindersModule } from './modules/trial-reminders/trial-reminders.
     ConfigModule.forRoot({ isGlobal: true }),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    QueuesModule,
     PrismaModule,
     AuthModule,
     CompanyModule,
