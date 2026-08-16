@@ -176,6 +176,12 @@ export default function LandingPage() {
                 PLANO
               </a>
               <Link
+                href="/blog"
+                className="hidden text-sm font-bold tracking-wide text-white/70 transition hover:text-white sm:inline"
+              >
+                BLOG
+              </Link>
+              <Link
                 href="/login"
                 className="text-sm font-bold tracking-wide text-white/70 transition hover:text-white"
               >
@@ -609,7 +615,10 @@ export default function LandingPage() {
       <footer className="border-t border-white/10 px-4 py-8 text-center text-xs text-white/40 sm:px-6">
         <p className="mx-auto max-w-lg leading-relaxed">
           © {new Date().getFullYear()} VOLTTA™ — Sistema de agendamento online
-          para barbearias, salões e estética. {SITE_TAGLINE}
+          para barbearias, salões e estética. {SITE_TAGLINE}{" "}
+          <Link href="/blog" className="text-white/60 underline-offset-2 hover:underline">
+            Blog
+          </Link>
         </p>
       </footer>
     </main>

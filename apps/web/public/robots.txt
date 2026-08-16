@@ -20,6 +20,10 @@ Allow: /
 Allow: /signup
 Allow: /login
 Allow: /agendar
+Allow: /blog
+Allow: /para-barbearias
+Allow: /para-saloes
+Allow: /para-estetica
 Allow: /llms.txt
 Allow: /marketing/
 Allow: /*.webp$
@@ -49,6 +53,10 @@ Allow: /
 Allow: /signup
 Allow: /login
 Allow: /agendar
+Allow: /blog
+Allow: /para-barbearias
+Allow: /para-saloes
+Allow: /para-estetica
 Allow: /llms.txt
 Allow: /marketing/
 

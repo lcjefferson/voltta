@@ -243,6 +243,12 @@ export function VerticalLandingPage({
             >
               Visão geral
             </Link>
+            <Link
+              href="/blog"
+              className="rounded-md border border-white/20 px-4 py-2 text-sm font-bold text-white/80 transition hover:border-[#c4a574] hover:text-[#c4a574]"
+            >
+              Blog
+            </Link>
           </div>
         </div>
       </section>
