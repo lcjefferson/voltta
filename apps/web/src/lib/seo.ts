@@ -36,7 +36,7 @@ export const SITE_TAGLINE = "Seu cliente sempre de volta.";
 export const PRODUCT_SUMMARY =
   "A VOLTTA é um software SaaS para barbearias, salões de beleza e profissionais de estética (manicure, cílios, sobrancelha e afins) no Brasil. Oferece agenda online, link público de agendamento, CRM de clientes e leads, WhatsApp automatizado (confirmações, lembretes e campanhas de retorno), Score de risco de abandono, dashboard financeiro e gestão de até 5 profissionais. O plano custa R$ 79,90/mês, com 7 dias de teste grátis e sem fidelidade.";
 
-export const OG_IMAGE_PATH = "/marketing/hero-barbershop.jpg";
+export const OG_IMAGE_PATH = "/marketing/hero-beauty.jpg";
 export const OG_IMAGE_URL = `${SITE_URL}${OG_IMAGE_PATH}`;
 export const OG_IMAGE_ALT =
   "Voltta: sistema de agendamento online e automação para barbearias, salões e estética";
@@ -96,8 +96,8 @@ export function softwareApplicationJsonLd() {
     alternateName: ["VOLTTA", "Voltta Agenda", "Sistema Voltta"],
     description: PRODUCT_SUMMARY,
     url: SITE_URL,
-    image: [`${SITE_URL}/marketing/hero-barbershop.webp`, OG_IMAGE_URL],
-    screenshot: `${SITE_URL}/marketing/feature-barber.webp`,
+    image: [`${SITE_URL}/marketing/hero-beauty.webp`, OG_IMAGE_URL],
+    screenshot: `${SITE_URL}/marketing/feature-salon.webp`,
     applicationCategory: "BusinessApplication",
     applicationSubCategory:
       "Beauty business management and scheduling software",
@@ -145,7 +145,7 @@ export function softwareApplicationJsonLd() {
       url: SITE_URL,
       logo: {
         "@type": "ImageObject",
-        url: `${SITE_URL}/marketing/hero-barbershop.webp`,
+        url: `${SITE_URL}/marketing/hero-beauty.webp`,
       },
     },
     provider: {
@@ -180,7 +180,7 @@ export function jsonLdGraph() {
         url: SITE_URL,
         logo: {
           "@type": "ImageObject",
-          url: `${SITE_URL}/marketing/hero-barbershop.webp`,
+          url: `${SITE_URL}/marketing/hero-beauty.webp`,
           width: 1536,
           height: 1024,
         },
@@ -217,7 +217,7 @@ export function jsonLdGraph() {
         about: { "@id": appId },
         primaryImageOfPage: {
           "@type": "ImageObject",
-          url: `${SITE_URL}/marketing/hero-barbershop.webp`,
+          url: `${SITE_URL}/marketing/hero-beauty.webp`,
           width: 1536,
           height: 1024,
         },
@@ -236,7 +236,7 @@ export function jsonLdGraph() {
         operatingSystem: "Web",
         browserRequirements: "Requires JavaScript",
         url: SITE_URL,
-        image: `${SITE_URL}/marketing/hero-barbershop.webp`,
+        image: `${SITE_URL}/marketing/hero-beauty.webp`,
         screenshot: `${SITE_URL}/marketing/feature-whatsapp.webp`,
         description: PRODUCT_SUMMARY,
         offers: {

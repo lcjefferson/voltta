@@ -15,9 +15,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 1,
       images: [
+        `${SITE_URL}/marketing/hero-beauty.webp`,
         `${SITE_URL}/marketing/hero-barbershop.webp`,
-        `${SITE_URL}/marketing/feature-barber.webp`,
-        `${SITE_URL}/marketing/feature-whatsapp.webp`,
+        `${SITE_URL}/marketing/hero-salon.webp`,
+        `${SITE_URL}/marketing/hero-aesthetics.webp`,
       ],
     },
     ...VERTICAL_LIST.map((v) => ({

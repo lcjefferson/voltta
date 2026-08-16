@@ -29,7 +29,7 @@ export function VerticalLandingPage({
         aria-labelledby="vertical-h1"
       >
         <Image
-          src="/marketing/hero-barbershop.webp"
+          src={landing.heroImage}
           alt={landing.heroAlt}
           width={1536}
           height={1024}

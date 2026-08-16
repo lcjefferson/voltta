@@ -30,6 +30,7 @@ export type VerticalLanding = {
   ctaTitle: string;
   ctaBody: string;
   heroAlt: string;
+  heroImage: string;
 };
 
 export const VERTICAL_LANDINGS: Record<VerticalSlug, VerticalLanding> = {
@@ -127,6 +128,7 @@ export const VERTICAL_LANDINGS: Record<VerticalSlug, VerticalLanding> = {
       "Se não souber responder, está deixando dinheiro na cadeira. Comece o teste e veja a diferença na agenda da barbearia.",
     heroAlt:
       "Interior de barbearia com sistema de agendamento online Voltta",
+    heroImage: "/marketing/hero-barbershop.webp",
   },
   "para-saloes": {
     slug: "para-saloes",
@@ -222,6 +224,7 @@ export const VERTICAL_LANDINGS: Record<VerticalSlug, VerticalLanding> = {
       "Comece o teste e veja a diferença na agenda do salão — com menos WhatsApp manual e mais recorrência.",
     heroAlt:
       "Salão de beleza com agenda online e automação WhatsApp Voltta",
+    heroImage: "/marketing/hero-salon.webp",
   },
   "para-estetica": {
     slug: "para-estetica",
@@ -317,6 +320,7 @@ export const VERTICAL_LANDINGS: Record<VerticalSlug, VerticalLanding> = {
       "Comece o teste e coloque lembrete e retorno no piloto automático do seu estúdio.",
     heroAlt:
       "Estúdio de estética com agendamento online e lembretes WhatsApp Voltta",
+    heroImage: "/marketing/hero-aesthetics.webp",
   },
 };
 

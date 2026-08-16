@@ -89,16 +89,19 @@ const audiences = [
     title: "Barbearias",
     text: "Corte, barba e combo com retorno automático — sem viver no WhatsApp.",
     href: "/para-barbearias",
+    image: "/marketing/hero-barbershop.webp",
   },
   {
     title: "Salões",
     text: "Equipe, agenda e clientes recorrentes em um só lugar.",
     href: "/para-saloes",
+    image: "/marketing/hero-salon.webp",
   },
   {
     title: "Estética",
     text: "Manicure, cílios, sobrancelha e procedimentos com lembrete na hora certa.",
     href: "/para-estetica",
+    image: "/marketing/hero-aesthetics.webp",
   },
 ];
 
@@ -143,8 +146,8 @@ export default function LandingPage() {
         aria-labelledby="landing-h1"
       >
         <Image
-          src="/marketing/hero-barbershop.webp"
-          alt="Espaço de beleza com sistema de agendamento online Voltta"
+          src="/marketing/hero-beauty.webp"
+          alt="Espaço de beleza com sistema de agendamento online Voltta para barbearias, salões e estética"
           width={1536}
           height={1024}
           priority
@@ -277,8 +280,8 @@ export default function LandingPage() {
           </div>
           <div className="relative aspect-[4/5] overflow-hidden md:aspect-[4/3]">
             <Image
-              src="/marketing/feature-barber.webp"
-              alt="Profissional atendendo cliente com agenda organizada pela Voltta"
+              src="/marketing/feature-salon.webp"
+              alt="Profissional de salão atendendo cliente com agenda organizada pela Voltta"
               width={1536}
               height={1024}
               loading="lazy"
@@ -380,15 +383,30 @@ export default function LandingPage() {
               <Link
                 key={a.title}
                 href={a.href}
-                className="rounded-lg border border-neutral-200 bg-white p-5 transition hover:border-[#c4a574]"
+                className="group overflow-hidden rounded-lg border border-neutral-200 bg-white transition hover:border-[#c4a574]"
               >
-                <h3 className="font-display text-xl tracking-wide text-[#9b7a44]">
-                  {a.title}
-                </h3>
-                <p className="mt-2 text-sm text-neutral-600">{a.text}</p>
-                <p className="mt-3 text-xs font-bold tracking-wide text-[#9b7a44]">
-                  VER PÁGINA →
-                </p>
+                <div className="relative aspect-[16/10] overflow-hidden">
+                  <Image
+                    src={a.image}
+                    alt={`${a.title} — agendamento online Voltta`}
+                    width={960}
+                    height={600}
+                    loading="lazy"
+                    decoding="async"
+                    quality={75}
+                    className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                    sizes="(max-width: 640px) 100vw, 33vw"
+                  />
+                </div>
+                <div className="p-5">
+                  <h3 className="font-display text-xl tracking-wide text-[#9b7a44]">
+                    {a.title}
+                  </h3>
+                  <p className="mt-2 text-sm text-neutral-600">{a.text}</p>
+                  <p className="mt-3 text-xs font-bold tracking-wide text-[#9b7a44]">
+                    VER PÁGINA →
+                  </p>
+                </div>
               </Link>
             ))}
           </div>
@@ -555,7 +573,7 @@ export default function LandingPage() {
 
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-24 md:px-12 md:py-32">
         <Image
-          src="/marketing/hero-barbershop.webp"
+          src="/marketing/hero-beauty.webp"
           alt=""
           width={1536}
           height={1024}
