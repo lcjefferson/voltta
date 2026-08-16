@@ -1,13 +1,19 @@
 import { barbeariasPosts } from "@/content/blog/barbearias";
+import { barbeariasPilarPosts } from "@/content/blog/barbearias-pilares";
 import { saloesPosts } from "@/content/blog/saloes";
+import { saloesPilarPosts } from "@/content/blog/saloes-pilares";
 import { esteticaPosts } from "@/content/blog/estetica";
+import { esteticaPilarPosts } from "@/content/blog/estetica-pilares";
 import type { BlogNiche, BlogPost } from "@/lib/blog/types";
 import { SITE_URL } from "@/lib/seo";
 
 export const allBlogPosts: BlogPost[] = [
   ...(barbeariasPosts as BlogPost[]),
+  ...(barbeariasPilarPosts as BlogPost[]),
   ...(saloesPosts as BlogPost[]),
+  ...(saloesPilarPosts as BlogPost[]),
   ...(esteticaPosts as BlogPost[]),
+  ...(esteticaPilarPosts as BlogPost[]),
 ].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
 
 export function getPostBySlug(slug: string) {
