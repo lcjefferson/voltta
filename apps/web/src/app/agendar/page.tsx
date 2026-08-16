@@ -28,8 +28,8 @@ export default function AgendarIndexPage() {
         </p>
         <h1 className="mt-6 font-display text-4xl">Link incompleto</h1>
         <p className="mt-3 text-white/70">
-          O agendamento público precisa do slug da barbearia, no formato{" "}
-          <span className="font-mono text-[#c4a574]">/agendar/nome-da-barbearia</span>.
+          O agendamento público precisa do slug do negócio, no formato{" "}
+          <span className="font-mono text-[#c4a574]">/agendar/nome-do-negocio</span>.
         </p>
         <p className="mt-3 text-sm text-white/50">
           Se você é o dono, abra a Agenda no painel e use o botão Copiar link.

@@ -6,8 +6,8 @@ import {
   Module,
   Patch,
 } from '@nestjs/common';
-import { IsObject, IsOptional, IsString } from 'class-validator';
-import { Prisma, RoleCode } from '@prisma/client';
+import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { BusinessType, Prisma, RoleCode } from '@prisma/client';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -37,6 +37,10 @@ class CompanyDto {
   @IsOptional()
   @IsString()
   logoUrl?: string;
+
+  @IsOptional()
+  @IsEnum(BusinessType)
+  businessType?: BusinessType;
 
   @IsOptional()
   @IsObject()
@@ -69,6 +73,7 @@ class CompanyService {
     if (dto.phone !== undefined) data.phone = dto.phone;
     if (dto.timezone !== undefined) data.timezone = dto.timezone;
     if (dto.logoUrl !== undefined) data.logoUrl = dto.logoUrl;
+    if (dto.businessType !== undefined) data.businessType = dto.businessType;
     if (dto.businessHours !== undefined) {
       data.businessHours = normalizeBusinessHours(
         dto.businessHours,

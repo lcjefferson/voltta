@@ -7,6 +7,10 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
+import {
+  BUSINESS_TYPES,
+  type BusinessTypeValue,
+} from "@/lib/business-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +22,7 @@ const formSchema = z.object({
   companySlug: z.string().optional(),
   name: z.string().optional(),
   companyName: z.string().optional(),
+  businessType: z.enum(["BARBERSHOP", "SALON", "AESTHETICS"]).optional(),
 });
 type AuthValues = z.infer<typeof formSchema>;
 
@@ -29,6 +34,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
     register,
     handleSubmit,
     setError,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<AuthValues>({
     resolver: zodResolver(formSchema),
@@ -38,14 +44,23 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       name: "",
       companyName: "",
       companySlug: "",
+      businessType: "BARBERSHOP",
     },
   });
+
+  const businessType = (watch("businessType") ||
+    "BARBERSHOP") as BusinessTypeValue;
+  const companyExample =
+    BUSINESS_TYPES.find((t) => t.value === businessType)?.example ||
+    "Ex.: Seu negócio";
 
   async function submit(values: AuthValues) {
     if (mode === "signup" && (!values.name || !values.companyName)) {
       if (!values.name) setError("name", { message: "Informe seu nome" });
       if (!values.companyName)
-        setError("companyName", { message: "Informe o nome da barbearia" });
+        setError("companyName", {
+          message: "Informe o nome do seu negócio",
+        });
       return;
     }
     try {
@@ -60,7 +75,20 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         };
       }>(mode === "signup" ? "/auth/signup" : "/auth/login", {
         method: "POST",
-        body: JSON.stringify(values),
+        body: JSON.stringify(
+          mode === "signup"
+            ? {
+                name: values.name,
+                email: values.email,
+                password: values.password,
+                companyName: values.companyName,
+                businessType: values.businessType || "BARBERSHOP",
+              }
+            : {
+                email: values.email,
+                password: values.password,
+              },
+        ),
       });
       setAuth(data.accessToken, data.refreshToken, data.user);
       const params = new URLSearchParams(window.location.search);
@@ -86,10 +114,23 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
             )}
           </div>
           <div>
-            <Label>Nome da barbearia</Label>
+            <Label>Tipo do negócio</Label>
+            <select
+              className="flex h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm"
+              {...register("businessType")}
+            >
+              {BUSINESS_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <Label>Nome do negócio</Label>
             <Input
               {...register("companyName")}
-              placeholder="Ex.: Barbearia do João"
+              placeholder={companyExample}
             />
             {errors.companyName && (
               <p className="mt-1 text-xs text-red-600">
@@ -104,7 +145,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
         <Input
           type="email"
           {...register("email")}
-          placeholder="voce@barbearia.com"
+          placeholder="voce@email.com"
         />
         {errors.email && (
           <p className="mt-1 text-xs text-red-600">{errors.email.message}</p>

@@ -15,6 +15,12 @@ enum CompanyStatus {
   CANCELED
 }
 
+enum BusinessType {
+  BARBERSHOP
+  SALON
+  AESTHETICS
+}
+
 enum AppointmentStatus {
   PENDING
   CONFIRMED
@@ -100,6 +106,8 @@ model Company {
   phone            String?
   timezone         String        @default("America/Sao_Paulo")
   logoUrl          String?       @map("logo_url")
+  /// Tipo do negócio: barbearia, salão ou estética (manicure, cílios, etc.)
+  businessType     BusinessType  @default(BARBERSHOP) @map("business_type")
   /// Dias/horários de funcionamento: { slotIntervalMinutes, days: { "0"|.."6": { open, close } | null } }
   businessHours    Json?         @map("business_hours")
   status           CompanyStatus @default(TRIALING)

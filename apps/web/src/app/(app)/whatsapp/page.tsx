@@ -93,7 +93,7 @@ export default function WhatsappPage() {
                 >
                   Uazapi
                 </a>
-                . Escaneie o QR Code com o WhatsApp Business da barbearia.
+                . Escaneie o QR Code com o WhatsApp Business do seu negócio.
               </p>
             </div>
             <Badge>{data?.status || (isLoading ? "..." : "DISCONNECTED")}</Badge>

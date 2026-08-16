@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
                 <Input
                   type="email"
                   {...register("email")}
-                  placeholder="voce@barbearia.com"
+                  placeholder="voce@email.com"
                   autoComplete="email"
                 />
                 {errors.email && (

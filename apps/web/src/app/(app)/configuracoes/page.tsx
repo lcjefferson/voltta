@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { PageTitle } from "@/components/app-page";
 import { api } from "@/lib/api";
+import { BUSINESS_TYPES } from "@/lib/business-types";
 import { useAuthStore } from "@/lib/auth-store";
 
 type DayBreak = { start: string; end: string };
@@ -27,6 +28,7 @@ type Company = {
   name: string;
   slug: string;
   phone?: string | null;
+  businessType?: string;
   businessHours: BusinessHours;
 };
 
@@ -86,6 +88,7 @@ export default function ConfiguracoesPage() {
     values: {
       companyName: company?.name || "",
       phone: company?.phone || "",
+      businessType: company?.businessType || "BARBERSHOP",
     },
   });
 
@@ -119,6 +122,7 @@ export default function ConfiguracoesPage() {
     mutationFn: (payload: {
       name: string;
       phone: string;
+      businessType: string;
       businessHours: BusinessHours;
     }) =>
       api("/company", {
@@ -316,13 +320,14 @@ export default function ConfiguracoesPage() {
         </Card>
 
         <Card>
-          <h2 className="font-bold">Dados da barbearia</h2>
+          <h2 className="font-bold">Dados do negócio</h2>
           <form
             className="mt-5 space-y-4"
             onSubmit={handleSubmit((v) =>
               save.mutate({
                 name: v.companyName,
                 phone: v.phone,
+                businessType: v.businessType,
                 businessHours: hours,
               }),
             )}
@@ -330,6 +335,19 @@ export default function ConfiguracoesPage() {
             <div>
               <Label>Nome</Label>
               <Input {...register("companyName", { required: true })} />
+            </div>
+            <div>
+              <Label>Tipo do negócio</Label>
+              <select
+                className="flex h-11 w-full rounded-md border border-neutral-300 bg-white px-3 text-sm"
+                {...register("businessType")}
+              >
+                {BUSINESS_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <Label>WhatsApp</Label>

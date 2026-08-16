@@ -4,9 +4,9 @@ import { JwtModule, JwtService } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
-import { IsEmail, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
 import * as bcrypt from 'bcrypt';
-import { RoleCode, Prisma } from '@prisma/client';
+import { RoleCode, Prisma, BusinessType } from '@prisma/client';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Public, CurrentUser, AuthUser } from '../../common/decorators/auth.decorators';
@@ -14,7 +14,24 @@ import { DEFAULT_BUSINESS_HOURS } from '../../common/business-hours';
 import { MailModule } from '../../providers/mail/mail.module';
 import { MailService } from '../../providers/mail/mail.service';
 
-class SignupDto { @IsString() name!: string; @IsEmail() email!: string; @IsString() @MinLength(6) password!: string; @IsString() companyName!: string; }
+class SignupDto {
+  @IsString()
+  name!: string;
+
+  @IsEmail()
+  email!: string;
+
+  @IsString()
+  @MinLength(6)
+  password!: string;
+
+  @IsString()
+  companyName!: string;
+
+  @IsOptional()
+  @IsEnum(BusinessType)
+  businessType?: BusinessType;
+}
 class LoginDto { @IsEmail() email!: string; @IsString() password!: string; }
 class RefreshDto { @IsString() refreshToken!: string; }
 class ForgotDto { @IsEmail() email!: string; }
@@ -161,6 +178,7 @@ export class AuthService {
       data: {
         name: dto.companyName,
         slug,
+        businessType: dto.businessType || BusinessType.BARBERSHOP,
         trialEndsAt: new Date(Date.now() + 7 * 86400000),
         businessHours: DEFAULT_BUSINESS_HOURS as unknown as Prisma.InputJsonValue,
         users: {

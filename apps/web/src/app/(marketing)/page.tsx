@@ -36,7 +36,7 @@ const benefits = [
 
 const pillars = [
   { n: "01", title: "CAPTURAR", text: "WhatsApp vira lead automático no CRM." },
-  { n: "02", title: "ORGANIZAR", text: "Agenda e equipe da barbearia sob controle." },
+  { n: "02", title: "ORGANIZAR", text: "Agenda e equipe do seu negócio sob controle." },
   { n: "03", title: "AUTOMATIZAR", text: "Mensagens que trabalham por você." },
   { n: "04", title: "RECUPERAR", text: "Quem esqueceu, volta a agendar." },
 ];
@@ -44,11 +44,26 @@ const pillars = [
 const planItems = [
   "Agenda online + link público de agendamento",
   "Até 5 profissionais",
-  "WhatsApp automatizado para barbearia",
+  "WhatsApp automatizado para beleza",
   "CRM + captação de leads",
   "Score VOLTTA™ de risco",
   "Dashboard e financeiro",
   "7 dias grátis · sem fidelidade",
+];
+
+const audiences = [
+  {
+    title: "Barbearias",
+    text: "Corte, barba e combo com retorno automático — sem viver no WhatsApp.",
+  },
+  {
+    title: "Salões",
+    text: "Equipe, agenda e clientes recorrentes em um só lugar.",
+  },
+  {
+    title: "Estética",
+    text: "Manicure, cílios, sobrancelha e procedimentos com lembrete na hora certa.",
+  },
 ];
 
 const testimonials = [
@@ -63,16 +78,16 @@ const testimonials = [
   },
   {
     name: "Camila Rocha",
-    role: "Sócia · Studio Corte & Cia",
+    role: "Sócia · Studio Beleza & Cia",
     city: "Belo Horizonte, MG",
     quote:
-      "O link de agendamento sozinho já pagou a VOLTTA. Agora o WhatsApp confirma e lembra o cliente sem a gente precisar.",
+      "O link de agendamento sozinho já pagou a VOLTTA. Agora o WhatsApp confirma e lembra a cliente sem a gente precisar.",
     image: "/marketing/testimonial-camila.webp",
     result: "Agenda 90% ocupada",
   },
   {
     name: "Diego Santos",
-    role: "Barbeiro · Casa do Corte",
+    role: "Profissional · Casa do Corte",
     city: "Campinas, SP",
     quote:
       "O Score mostra quem está esfriando. A gente manda a mensagem e a pessoa volta. Simples assim.",
@@ -93,7 +108,7 @@ export default function LandingPage() {
       >
         <Image
           src="/marketing/hero-barbershop.webp"
-          alt="Interior de barbearia premium com sistema de agendamento online Voltta"
+          alt="Espaço de beleza com sistema de agendamento online Voltta"
           width={1536}
           height={1024}
           priority
@@ -143,7 +158,9 @@ export default function LandingPage() {
               style={{ animationDelay: "120ms" }}
             >
               Sistema de agendamento online e automação WhatsApp{" "}
-              <span className="text-[#c4a574]">para barbearias</span>
+              <span className="text-[#c4a574]">
+                para barbearias, salões e estética
+              </span>
             </h1>
             <p
               className="animate-reveal mt-4 max-w-2xl font-display text-xl leading-snug tracking-tight text-white/90 sm:mt-6 sm:text-2xl md:text-3xl"
@@ -183,8 +200,8 @@ export default function LandingPage() {
       >
         <div className="mx-auto flex max-w-6xl flex-col gap-4 text-sm text-white/65 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-6">
           <p>
-            <strong className="text-[#c4a574]">+120</strong> barbearias no
-            teste
+            <strong className="text-[#c4a574]">+120</strong> negócios de beleza
+            no teste
           </p>
           <p>
             <strong className="text-[#c4a574]">R$ 79,90</strong>/mês · se paga
@@ -209,8 +226,8 @@ export default function LandingPage() {
               <span className="text-[#9b7a44]">PRECISA DOS QUE JÁ TEM.</span>
             </h2>
             <p className="mt-6 text-base leading-relaxed text-neutral-600 sm:text-lg">
-              Eles gostam do corte. Do ambiente. Do atendimento. Mas esquecem de
-              marcar de novo — e a cadeira fica vazia.
+              Eles gostam do atendimento. Do resultado. Do ambiente. Mas
+              esquecem de marcar de novo — e o horário fica vazio.
             </p>
             <p className="mt-4 text-base font-semibold text-[#171715] sm:text-lg">
               A VOLTTA faz eles lembrarem. Automaticamente.
@@ -225,7 +242,7 @@ export default function LandingPage() {
           <div className="relative aspect-[4/5] overflow-hidden md:aspect-[4/3]">
             <Image
               src="/marketing/feature-barber.webp"
-              alt="Barbeiro atendendo cliente com agenda da barbearia organizada"
+              alt="Profissional atendendo cliente com agenda organizada pela Voltta"
               width={1536}
               height={1024}
               loading="lazy"
@@ -273,7 +290,7 @@ export default function LandingPage() {
           <div className="relative order-2 aspect-[4/3] overflow-hidden lg:order-1">
             <Image
               src="/marketing/feature-whatsapp.webp"
-              alt="Automação de WhatsApp para confirmação e lembrete de horários em barbearia"
+              alt="Automação de WhatsApp para confirmação e lembrete de horários"
               width={1536}
               height={1024}
               loading="lazy"
@@ -320,8 +337,21 @@ export default function LandingPage() {
           <h2 className="mt-4 max-w-3xl font-display text-3xl leading-[1.05] sm:text-4xl md:text-5xl md:leading-none">
             NÃO É SÓ AGENDA.
             <br />
-            É CRESCIMENTO PARA SUA BARBEARIA.
+            É CRESCIMENTO PARA O SEU NEGÓCIO.
           </h2>
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            {audiences.map((a) => (
+              <div
+                key={a.title}
+                className="rounded-lg border border-neutral-200 bg-white p-5"
+              >
+                <h3 className="font-display text-xl tracking-wide text-[#9b7a44]">
+                  {a.title}
+                </h3>
+                <p className="mt-2 text-sm text-neutral-600">{a.text}</p>
+              </div>
+            ))}
+          </div>
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {pillars.map((p) => (
               <div key={p.title} className="border-t-2 border-[#c4a574] pt-5">
@@ -503,7 +533,7 @@ export default function LandingPage() {
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-base text-[#171715]/80 sm:text-lg">
             Se não souber responder, está deixando dinheiro na mesa. Comece o
-            teste e veja a diferença na agenda da sua barbearia.
+            teste e veja a diferença na agenda do seu negócio.
           </p>
           <p className="mt-10 font-display text-3xl tracking-[.1em] sm:text-4xl sm:tracking-[.16em] md:text-5xl">
             VOLTTA<sup className="text-base">™</sup>
@@ -521,7 +551,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/10 px-4 py-8 text-center text-xs text-white/40 sm:px-6">
         <p className="mx-auto max-w-lg leading-relaxed">
           © {new Date().getFullYear()} VOLTTA™ — Sistema de agendamento online
-          para barbearias. {SITE_TAGLINE}
+          para barbearias, salões e estética. {SITE_TAGLINE}
         </p>
       </footer>
     </main>

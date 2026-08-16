@@ -136,7 +136,7 @@ export default function BookingPage() {
           {shopError && (
             <div className="mt-6 space-y-3">
               <p className="text-neutral-700">
-                Não encontramos uma barbearia com o link{" "}
+                Não encontramos um negócio com o link{" "}
                 <span className="font-mono text-sm">/agendar/{slug}</span>.
               </p>
             </div>
@@ -342,7 +342,7 @@ export default function BookingPage() {
             <div className="mt-6 space-y-3">
               <p className="text-neutral-700">
                 Seu horário foi reservado. Você receberá a confirmação no
-                WhatsApp quando a barbearia estiver conectada.
+                WhatsApp quando o negócio estiver conectado.
               </p>
             </div>
           )}

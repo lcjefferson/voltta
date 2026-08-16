@@ -40,7 +40,7 @@ type EditForm = {
 
 const roleLabel: Record<RoleCode, string> = {
   ADMIN: "Admin",
-  BARBEIRO: "Barbeiro",
+  BARBEIRO: "Profissional",
   RECEPCIONISTA: "Recepcionista",
 };
 
@@ -177,7 +177,7 @@ export default function ProfissionaisPage() {
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <Card>
           <div className="mb-5 flex items-center justify-between gap-3">
-            <h2 className="font-bold">Equipe da barbearia</h2>
+            <h2 className="font-bold">Equipe do negócio</h2>
             <span className="text-sm text-neutral-500">
               {users.length} {users.length === 1 ? "pessoa" : "pessoas"}
             </span>
@@ -218,7 +218,7 @@ export default function ProfissionaisPage() {
                               },
                             })}
                           >
-                            <option value="BARBEIRO">Barbeiro</option>
+                            <option value="BARBEIRO">Profissional</option>
                             <option value="RECEPCIONISTA">Recepcionista</option>
                             <option value="ADMIN">Admin</option>
                           </select>
@@ -385,7 +385,7 @@ export default function ProfissionaisPage() {
         <Card>
           <h2 className="font-bold">Novo profissional</h2>
           <p className="mt-1 text-sm text-neutral-500">
-            Cada barbeiro entra na agenda e no agendamento online.
+            Cada profissional entra na agenda e no agendamento online.
           </p>
 
           {atLimit && (
@@ -410,7 +410,7 @@ export default function ProfissionaisPage() {
               <Label>E-mail (login)</Label>
               <Input
                 type="email"
-                placeholder="joao@barbearia.com"
+                placeholder="joao@estudio.com"
                 {...registerCreate("email", { required: true })}
               />
             </div>
@@ -438,7 +438,7 @@ export default function ProfissionaisPage() {
                   },
                 })}
               >
-                <option value="BARBEIRO">Barbeiro</option>
+                <option value="BARBEIRO">Profissional</option>
                 <option value="RECEPCIONISTA">Recepcionista</option>
                 <option value="ADMIN">Admin</option>
               </select>
