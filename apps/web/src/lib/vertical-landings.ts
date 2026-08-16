@@ -343,15 +343,43 @@ export function verticalJsonLd(landing: VerticalLanding) {
         description: landing.description,
         inLanguage: "pt-BR",
         isPartOf: { "@id": `${SITE_URL}/#website` },
-        about: {
-          "@type": "SoftwareApplication",
-          name: "Voltta",
-          applicationCategory: "BusinessApplication",
-          offers: {
-            "@type": "Offer",
-            price: "79.90",
-            priceCurrency: "BRL",
-          },
+        about: { "@id": `${url}#software` },
+        primaryImageOfPage: {
+          "@type": "ImageObject",
+          url: `${SITE_URL}${landing.heroImage}`,
+        },
+      },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${url}#software`,
+        name: "Voltta",
+        alternateName: ["VOLTTA", `Voltta para ${landing.navLabel}`],
+        description: landing.description,
+        url,
+        image: `${SITE_URL}${landing.heroImage}`,
+        applicationCategory: "BusinessApplication",
+        applicationSubCategory:
+          "Beauty business management and scheduling software",
+        operatingSystem: "Web",
+        offers: {
+          "@type": "Offer",
+          name: "Plano VOLTTA",
+          price: "79.90",
+          priceCurrency: "BRL",
+          url: `${SITE_URL}/signup`,
+          availability: "https://schema.org/InStock",
+          priceValidUntil: "2027-12-31",
+          description:
+            "Plano mensal com agenda online, WhatsApp automático, CRM e 7 dias de teste grátis",
+        },
+        audience: {
+          "@type": "BusinessAudience",
+          audienceType: landing.audience,
+        },
+        publisher: {
+          "@type": "Organization",
+          name: "VOLTTA",
+          url: SITE_URL,
         },
       },
       {

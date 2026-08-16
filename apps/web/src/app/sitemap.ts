@@ -7,7 +7,7 @@ import { VERTICAL_LIST } from "@/lib/vertical-landings";
  * sitemap.xml — home, conversão e landings por vertical (SEO).
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date("2026-08-16");
+  const lastModified = new Date("2026-08-16T20:00:00.000Z");
 
   return [
     {

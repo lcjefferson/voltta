@@ -4,9 +4,9 @@ export const SITE_URL =
 
 export const SITE_NAME = "VOLTTA";
 
-/** Title Tag — keyword principal no início + marca */
+/** Title Tag — ≤60 caracteres, keyword principal + marca */
 export const SITE_TITLE =
-  "Voltta: Sistema de Agendamento Online para Barbearias, Salões e Estética";
+  "Voltta: Agenda Online e WhatsApp para Barbearias e Salões";
 
 /** Meta Description — ~155 chars, CTA + keywords do nicho */
 export const SITE_DESCRIPTION =
@@ -163,10 +163,10 @@ export function softwareApplicationJsonLd() {
   };
 }
 
+/** Organization + WebSite globais (sem FAQ — FAQ só em páginas com bloco FAQ). */
 export function jsonLdGraph() {
   const orgId = `${SITE_URL}/#organization`;
   const websiteId = `${SITE_URL}/#website`;
-  const webpageId = `${SITE_URL}/#webpage`;
   const appId = `${SITE_URL}/#software`;
 
   return {
@@ -207,6 +207,49 @@ export function jsonLdGraph() {
         },
       },
       {
+        "@type": ["SoftwareApplication", "WebApplication"],
+        "@id": appId,
+        name: SITE_NAME,
+        alternateName: "Voltta",
+        applicationCategory: "BusinessApplication",
+        applicationSubCategory: "Beauty business management software",
+        operatingSystem: "Web",
+        browserRequirements: "Requires JavaScript",
+        url: SITE_URL,
+        image: `${SITE_URL}/marketing/hero-beauty.webp`,
+        screenshot: `${SITE_URL}/marketing/feature-whatsapp.webp`,
+        description: PRODUCT_SUMMARY,
+        offers: {
+          "@type": "Offer",
+          name: "Plano VOLTTA",
+          price: "79.90",
+          priceCurrency: "BRL",
+          url: `${SITE_URL}/signup`,
+          availability: "https://schema.org/InStock",
+          priceValidUntil: "2027-12-31",
+        },
+        audience: {
+          "@type": "BusinessAudience",
+          audienceType:
+            "Barbearias, salões e profissionais de estética no Brasil",
+        },
+        publisher: { "@id": orgId },
+      },
+    ],
+  };
+}
+
+/** WebPage + FAQPage exclusivos da home (evita FAQ genérico em /blog e posts). */
+export function homePageJsonLd() {
+  const orgId = `${SITE_URL}/#organization`;
+  const websiteId = `${SITE_URL}/#website`;
+  const webpageId = `${SITE_URL}/#webpage`;
+  const appId = `${SITE_URL}/#software`;
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
         "@type": "WebPage",
         "@id": webpageId,
         url: SITE_URL,
@@ -227,33 +270,8 @@ export function jsonLdGraph() {
         },
       },
       {
-        "@type": ["SoftwareApplication", "WebApplication"],
-        "@id": appId,
-        name: SITE_NAME,
-        alternateName: "Voltta",
-        applicationCategory: "BusinessApplication",
-        applicationSubCategory: "Beauty business management software",
-        operatingSystem: "Web",
-        browserRequirements: "Requires JavaScript",
-        url: SITE_URL,
-        image: `${SITE_URL}/marketing/hero-beauty.webp`,
-        screenshot: `${SITE_URL}/marketing/feature-whatsapp.webp`,
-        description: PRODUCT_SUMMARY,
-        offers: {
-          "@type": "Offer",
-          price: "79.90",
-          priceCurrency: "BRL",
-          url: `${SITE_URL}/signup`,
-        },
-        audience: {
-          "@type": "BusinessAudience",
-          audienceType:
-            "Barbearias, salões e profissionais de estética no Brasil",
-        },
-        publisher: { "@id": orgId },
-      },
-      {
         "@type": "FAQPage",
+        "@id": `${SITE_URL}/#faq`,
         mainEntity: LANDING_FAQS.map((faq) => ({
           "@type": "Question",
           name: faq.question,
@@ -263,6 +281,41 @@ export function jsonLdGraph() {
           },
         })),
       },
+      {
+        "@type": "SoftwareApplication",
+        "@id": `${SITE_URL}/#software-home`,
+        name: "Voltta",
+        url: SITE_URL,
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web",
+        offers: {
+          "@type": "Offer",
+          price: "79.90",
+          priceCurrency: "BRL",
+          url: `${SITE_URL}/signup`,
+          availability: "https://schema.org/InStock",
+        },
+        publisher: { "@id": orgId },
+      },
     ],
+  };
+}
+
+export function faqPageJsonLd(
+  faqs: { question: string; answer: string }[],
+  pageUrl: string,
+) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "@id": `${pageUrl}#faq`,
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
   };
 }

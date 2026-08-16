@@ -42,13 +42,19 @@ export function blogPostJsonLd(post: BlogPost) {
   const url = blogPostCanonical(post.slug);
   return {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
+    "@type": ["BlogPosting", "Article"],
     headline: post.title,
     description: post.description,
     datePublished: post.publishedAt,
     dateModified: post.publishedAt,
     inLanguage: "pt-BR",
-    image: [`${SITE_URL}${post.coverImage}`],
+    image: [
+      {
+        "@type": "ImageObject",
+        url: `${SITE_URL}${post.coverImage}`,
+        caption: post.coverAlt,
+      },
+    ],
     author: {
       "@type": "Organization",
       name: "VOLTTA",
@@ -67,6 +73,7 @@ export function blogPostJsonLd(post: BlogPost) {
       "@type": "WebPage",
       "@id": url,
     },
+    url,
     keywords: post.keywords.join(", "),
   };
 }

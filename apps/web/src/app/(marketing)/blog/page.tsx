@@ -9,45 +9,122 @@ import {
   NICHE_LABEL,
   type BlogNiche,
 } from "@/lib/blog/types";
-import { OG_IMAGE_URL, SITE_NAME } from "@/lib/seo";
+import { OG_IMAGE_ALT, OG_IMAGE_URL, SITE_NAME, SITE_URL } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: {
-    absolute:
-      "Blog VOLTTA: Dicas para Barbearias, Salões e Estética | Agenda e WhatsApp",
-  },
-  description:
-    "Artigos práticos sobre agenda online, WhatsApp automático e retenção de clientes para barbearias, salões e profissionais de estética.",
-  keywords: [
-    "blog barbearia",
-    "dicas salão de beleza",
-    "agenda manicure",
-    "whatsapp automático beleza",
-    "retenção de clientes",
-  ],
-  alternates: { canonical: blogIndexCanonical() },
-  openGraph: {
-    type: "website",
-    locale: "pt_BR",
-    url: blogIndexCanonical(),
-    siteName: SITE_NAME,
-    title: "Blog VOLTTA — Beleza com agenda e WhatsApp",
+const niches: BlogNiche[] = ["barbearias", "saloes", "estetica"];
+
+const BLOG_TITLE =
+  "Blog VOLTTA: Dicas para Barbearias, Salões e Estética | Agenda e WhatsApp";
+const BLOG_DESCRIPTION =
+  "Artigos práticos sobre agenda online, WhatsApp automático e retenção de clientes para barbearias, salões e profissionais de estética.";
+
+const NICHE_META: Record<
+  BlogNiche,
+  { title: string; description: string }
+> = {
+  barbearias: {
+    title: "Blog VOLTTA para Barbearias | Agenda e WhatsApp",
     description:
-      "Conteúdo para barbearias, salões e estética: organização, retorno e automação.",
-    images: [{ url: OG_IMAGE_URL, width: 1200, height: 630 }],
+      "Dicas de agenda online, confirmação no WhatsApp e redução de faltas para barbearias. Conteúdo prático do blog VOLTTA.",
+  },
+  saloes: {
+    title: "Blog VOLTTA para Salões | Agenda e WhatsApp",
+    description:
+      "Artigos para salões de beleza: agenda online, lembretes no WhatsApp e clientes que voltam. Blog VOLTTA.",
+  },
+  estetica: {
+    title: "Blog VOLTTA para Estética | Agenda e WhatsApp",
+    description:
+      "Conteúdo para clínicas e estúdios de estética: agenda online, WhatsApp e menos faltas. Blog VOLTTA.",
   },
 };
 
-const niches: BlogNiche[] = ["barbearias", "saloes", "estetica"];
+type Props = {
+  searchParams: Promise<{ nicho?: string }>;
+};
+
+export async function generateMetadata({
+  searchParams,
+}: Props): Promise<Metadata> {
+  const { nicho } = await searchParams;
+  const active =
+    nicho && niches.includes(nicho as BlogNiche)
+      ? (nicho as BlogNiche)
+      : undefined;
+
+  const title = active ? NICHE_META[active].title : BLOG_TITLE;
+  const description = active
+    ? NICHE_META[active].description
+    : BLOG_DESCRIPTION;
+  const canonical = blogIndexCanonical();
+
+  return {
+    title: { absolute: title },
+    description,
+    keywords: [
+      "blog barbearia",
+      "dicas salão de beleza",
+      "agenda manicure",
+      "whatsapp automático beleza",
+      "retenção de clientes",
+      "sistema agenda online",
+    ],
+    alternates: { canonical },
+    robots: {
+      index: true,
+      follow: true,
+    },
+    openGraph: {
+      type: "website",
+      locale: "pt_BR",
+      url: canonical,
+      siteName: SITE_NAME,
+      title,
+      description,
+      images: [
+        {
+          url: OG_IMAGE_URL,
+          width: 1200,
+          height: 630,
+          alt: OG_IMAGE_ALT,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [
+        {
+          url: OG_IMAGE_URL,
+          alt: OG_IMAGE_ALT,
+          width: 1200,
+          height: 630,
+        },
+      ],
+    },
+  };
+}
 
 function formatDate(iso: string) {
   const [y, m, d] = iso.split("-");
   return `${d}/${m}/${y}`;
 }
 
-type Props = {
-  searchParams: Promise<{ nicho?: string }>;
-};
+function blogIndexJsonLd() {
+  const url = blogIndexCanonical();
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${url}#webpage`,
+    url,
+    name: BLOG_TITLE,
+    description: BLOG_DESCRIPTION,
+    inLanguage: "pt-BR",
+    isPartOf: { "@id": `${SITE_URL}/#website` },
+    about: { "@id": `${SITE_URL}/#software` },
+  };
+}
 
 export default async function BlogIndexPage({ searchParams }: Props) {
   const { nicho } = await searchParams;
@@ -61,6 +138,13 @@ export default async function BlogIndexPage({ searchParams }: Props) {
 
   return (
     <main className="min-h-screen bg-[#f7f6f2] text-[#171715]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(blogIndexJsonLd()),
+        }}
+      />
+
       <header className="border-b border-neutral-200 bg-[#171715] text-white">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 md:px-12">
           <Link
@@ -93,7 +177,7 @@ export default async function BlogIndexPage({ searchParams }: Props) {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 md:px-12">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" role="navigation" aria-label="Filtro por nicho">
           <Link
             href="/blog"
             className={`rounded-full px-4 py-2 text-sm font-bold ${

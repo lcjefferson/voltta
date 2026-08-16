@@ -7,7 +7,16 @@ import {
   VERTICAL_LIST,
   verticalJsonLd,
   type VerticalLanding,
+  type VerticalSlug,
 } from "@/lib/vertical-landings";
+import type { BlogNiche } from "@/lib/blog/types";
+import { testimonialsForNiche } from "@/lib/testimonials";
+
+const SLUG_TO_NICHE: Record<VerticalSlug, BlogNiche> = {
+  "para-barbearias": "barbearias",
+  "para-saloes": "saloes",
+  "para-estetica": "estetica",
+};
 
 export function VerticalLandingPage({
   landing,
@@ -16,6 +25,7 @@ export function VerticalLandingPage({
 }) {
   const others = VERTICAL_LIST.filter((v) => v.slug !== landing.slug);
   const jsonLd = verticalJsonLd(landing);
+  const testimonials = testimonialsForNiche(SLUG_TO_NICHE[landing.slug]);
 
   return (
     <main className="overflow-x-hidden bg-[#171715] text-white">
@@ -84,7 +94,7 @@ export function VerticalLandingPage({
               <Link href="/signup" className="w-full sm:w-auto">
                 <Button className="h-12 w-full px-7 text-base sm:w-auto">
                   COMEÇAR TESTE GRÁTIS
-                  <ArrowRight className="ml-2 size-4" />
+                  <ArrowRight className="ml-2 size-4" aria-hidden />
                 </Button>
               </Link>
               <span className="text-center text-sm text-white/55 sm:text-left">
@@ -174,6 +184,59 @@ export function VerticalLandingPage({
         </div>
       </section>
 
+      <section
+        className="px-4 py-16 sm:px-6 sm:py-20 md:px-12"
+        aria-labelledby="vertical-testimonials-heading"
+      >
+        <div className="mx-auto max-w-6xl">
+          <p className="text-xs font-bold tracking-[.22em] text-[#c4a574]">
+            QUEM JÁ USA
+          </p>
+          <h2
+            id="vertical-testimonials-heading"
+            className="mt-4 font-display text-3xl leading-[1.05] sm:text-4xl"
+          >
+            RESULTADO EM {landing.navLabel.toUpperCase()}.
+          </h2>
+          <div className="mt-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {testimonials.map((t) => (
+              <figure
+                key={`${t.name}-${t.niche}`}
+                className="flex flex-col border-t border-white/15 pt-6"
+              >
+                <div className="flex items-center gap-4">
+                  <Image
+                    src={t.image}
+                    alt={`${t.name}, ${t.role} em ${t.city} — depoimento Voltta`}
+                    width={1024}
+                    height={1024}
+                    loading="lazy"
+                    decoding="async"
+                    quality={75}
+                    className="size-14 rounded-full object-cover"
+                    sizes="56px"
+                  />
+                  <div>
+                    <figcaption className="font-bold">{t.name}</figcaption>
+                    <p className="text-xs text-white/50">
+                      {t.role}
+                      <br />
+                      {t.city}
+                    </p>
+                  </div>
+                </div>
+                <blockquote className="mt-5 flex-1 text-sm leading-relaxed text-white/75">
+                  “{t.quote}”
+                </blockquote>
+                <p className="mt-5 text-sm font-bold text-[#c4a574]">
+                  {t.result}
+                </p>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="bg-[#f7f6f2] px-4 py-16 text-[#171715] sm:px-6 sm:py-20 md:px-12">
         <div className="mx-auto max-w-3xl">
           <p className="text-xs font-bold tracking-[.22em] text-[#9b7a44]">
@@ -189,7 +252,9 @@ export function VerticalLandingPage({
                 className="group rounded-lg border border-neutral-200 bg-white px-5 py-4"
               >
                 <summary className="cursor-pointer list-none font-semibold marker:content-none">
-                  {faq.question}
+                  <h3 className="inline text-base font-semibold">
+                    {faq.question}
+                  </h3>
                 </summary>
                 <p className="mt-3 text-sm leading-relaxed text-neutral-600">
                   {faq.answer}
@@ -216,7 +281,7 @@ export function VerticalLandingPage({
           <Link href="/signup" className="mt-8 inline-block w-full sm:w-auto">
             <Button className="h-12 w-full bg-[#171715] px-8 text-base text-white hover:bg-[#2c2c28] sm:w-auto">
               COMEÇAR TESTE GRÁTIS
-              <ArrowRight className="ml-2 size-4" />
+              <ArrowRight className="ml-2 size-4" aria-hidden />
             </Button>
           </Link>
         </div>
@@ -224,9 +289,7 @@ export function VerticalLandingPage({
 
       <section className="border-t border-white/10 px-4 py-10 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-white/55">
-            A VOLTTA também atende:
-          </p>
+          <p className="text-sm text-white/55">A VOLTTA também atende:</p>
           <div className="flex flex-wrap gap-3">
             {others.map((v) => (
               <Link

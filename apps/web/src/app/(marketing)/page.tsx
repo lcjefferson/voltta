@@ -19,14 +19,19 @@ import {
   SITE_TAGLINE,
   SITE_TITLE,
   SITE_URL,
+  homePageJsonLd,
 } from "@/lib/seo";
+import { HOME_TESTIMONIALS } from "@/lib/testimonials";
 
 export const metadata: Metadata = {
   title: { absolute: SITE_TITLE },
   description: SITE_DESCRIPTION,
   alternates: { canonical: SITE_URL },
   openGraph: {
+    type: "website",
+    locale: "pt_BR",
     url: SITE_URL,
+    siteName: SITE_NAME,
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     images: [
@@ -39,8 +44,17 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
+    card: "summary_large_image",
     title: SITE_TITLE,
     description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: OG_IMAGE_URL,
+        alt: OG_IMAGE_ALT,
+        width: 1200,
+        height: 630,
+      },
+    ],
   },
 };
 
@@ -105,41 +119,18 @@ const audiences = [
   },
 ];
 
-const testimonials = [
-  {
-    name: "Rafael Moura",
-    role: "Dono · Barbearia Norte Fade",
-    city: "Curitiba, PR",
-    quote:
-      "Em 2 meses recuperei clientes que eu achava perdidos. A agenda ficou previsível — e eu parei de viver no WhatsApp.",
-    image: "/marketing/testimonial-rafael.webp",
-    result: "+38% de retorno",
-  },
-  {
-    name: "Camila Rocha",
-    role: "Sócia · Studio Beleza & Cia",
-    city: "Belo Horizonte, MG",
-    quote:
-      "O link de agendamento sozinho já pagou a VOLTTA. Agora o WhatsApp confirma e lembra a cliente sem a gente precisar.",
-    image: "/marketing/testimonial-camila.webp",
-    result: "Agenda 90% ocupada",
-  },
-  {
-    name: "Diego Santos",
-    role: "Profissional · Casa do Corte",
-    city: "Campinas, SP",
-    quote:
-      "O Score mostra quem está esfriando. A gente manda a mensagem e a pessoa volta. Simples assim.",
-    image: "/marketing/testimonial-diego.webp",
-    result: "R$ 2.4k recuperados/mês",
-  },
-];
-
+const testimonials = HOME_TESTIMONIALS;
 const faqs = LANDING_FAQS.map((f) => ({ q: f.question, a: f.answer }));
+const homeJsonLd = homePageJsonLd();
 
 export default function LandingPage() {
   return (
     <main className="overflow-x-hidden bg-[#171715] text-white">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
+
       {/* HERO */}
       <section
         className="relative min-h-[100svh] overflow-hidden"
@@ -319,7 +310,11 @@ export default function LandingPage() {
           <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {benefits.map(({ icon: Icon, title, text }) => (
               <div key={title} className="border-t-2 border-[#c4a574] pt-5">
-                <Icon className="size-6 text-[#c4a574]" aria-hidden />
+                <Icon
+                  className="size-6 text-[#c4a574]"
+                  aria-hidden
+                  focusable="false"
+                />
                 <h3 className="mt-5 text-lg font-bold">{title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-white/60">
                   {text}
@@ -394,7 +389,13 @@ export default function LandingPage() {
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <Image
                     src={a.image}
-                    alt={`${a.title} — agendamento online Voltta`}
+                    alt={
+                      a.title === "Barbearias"
+                        ? "Barbearia com agenda online e WhatsApp automático Voltta"
+                        : a.title === "Salões"
+                          ? "Salão de beleza com link de agendamento online Voltta"
+                          : "Estúdio de estética com lembretes de horário no WhatsApp Voltta"
+                    }
                     width={960}
                     height={600}
                     loading="lazy"
@@ -580,13 +581,12 @@ export default function LandingPage() {
       <section className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-24 md:px-12 md:py-32">
         <Image
           src="/marketing/hero-beauty.webp"
-          alt=""
+          alt="Ambiente de beleza com agenda online Voltta — fundo da chamada final"
           width={1536}
           height={1024}
           loading="lazy"
           decoding="async"
           quality={70}
-          aria-hidden
           className="absolute inset-0 h-full w-full object-cover opacity-40"
           sizes="100vw"
         />
