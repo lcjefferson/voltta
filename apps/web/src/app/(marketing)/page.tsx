@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { Metadata } from "next";
 import {
   ArrowRight,
   Check,
@@ -9,7 +10,39 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { LANDING_FAQS, SITE_TAGLINE } from "@/lib/seo";
+import {
+  LANDING_FAQS,
+  OG_IMAGE_ALT,
+  OG_IMAGE_URL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_TAGLINE,
+  SITE_TITLE,
+  SITE_URL,
+} from "@/lib/seo";
+
+export const metadata: Metadata = {
+  title: { absolute: SITE_TITLE },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: SITE_URL },
+  openGraph: {
+    url: SITE_URL,
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [
+      {
+        url: OG_IMAGE_URL,
+        width: 1200,
+        height: 630,
+        alt: OG_IMAGE_ALT,
+      },
+    ],
+  },
+  twitter: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+};
 
 const benefits = [
   {
@@ -55,14 +88,17 @@ const audiences = [
   {
     title: "Barbearias",
     text: "Corte, barba e combo com retorno automático — sem viver no WhatsApp.",
+    href: "/para-barbearias",
   },
   {
     title: "Salões",
     text: "Equipe, agenda e clientes recorrentes em um só lugar.",
+    href: "/para-saloes",
   },
   {
     title: "Estética",
     text: "Manicure, cílios, sobrancelha e procedimentos com lembrete na hora certa.",
+    href: "/para-estetica",
   },
 ];
 
@@ -341,15 +377,19 @@ export default function LandingPage() {
           </h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {audiences.map((a) => (
-              <div
+              <Link
                 key={a.title}
-                className="rounded-lg border border-neutral-200 bg-white p-5"
+                href={a.href}
+                className="rounded-lg border border-neutral-200 bg-white p-5 transition hover:border-[#c4a574]"
               >
                 <h3 className="font-display text-xl tracking-wide text-[#9b7a44]">
                   {a.title}
                 </h3>
                 <p className="mt-2 text-sm text-neutral-600">{a.text}</p>
-              </div>
+                <p className="mt-3 text-xs font-bold tracking-wide text-[#9b7a44]">
+                  VER PÁGINA →
+                </p>
+              </Link>
             ))}
           </div>
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -374,9 +414,9 @@ export default function LandingPage() {
             QUEM JÁ USA
           </p>
           <h2 className="mt-4 font-display text-3xl leading-[1.05] sm:text-4xl md:text-5xl md:leading-none">
-            RESULTADOS REAIS EM BARBEARIAS.
+            RESULTADOS REAIS NA BELEZA.
             <br />
-            NA CADEIRA E NO CAIXA.
+            NA AGENDA E NO CAIXA.
           </h2>
           <div className="mt-14 grid gap-8 md:grid-cols-3">
             {testimonials.map((t) => (

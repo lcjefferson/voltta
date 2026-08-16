@@ -5,30 +5,16 @@ import {
   SITE_DESCRIPTION,
   SITE_KEYWORDS,
   SITE_NAME,
-  SITE_TITLE,
-  SITE_URL,
 } from "@/lib/seo";
 
-/** Metadata específica da landing — canonical + OG no domínio raiz */
+/** Defaults do grupo marketing — páginas filhas sobrescrevem title/canonical. */
 export const metadata: Metadata = {
-  title: {
-    absolute: SITE_TITLE,
-  },
   description: SITE_DESCRIPTION,
   keywords: SITE_KEYWORDS,
-  alternates: {
-    canonical: SITE_URL,
-    types: {
-      "text/plain": [{ url: `${SITE_URL}/llms.txt`, title: "llms.txt" }],
-    },
-  },
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    url: SITE_URL,
     siteName: SITE_NAME,
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
     images: [
       {
         url: OG_IMAGE_URL,
@@ -42,8 +28,6 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
     images: [
       {
         url: OG_IMAGE_URL,

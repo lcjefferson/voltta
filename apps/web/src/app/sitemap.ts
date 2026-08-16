@@ -1,12 +1,12 @@
 import type { MetadataRoute } from "next";
 import { SITE_URL } from "@/lib/seo";
+import { VERTICAL_LIST } from "@/lib/vertical-landings";
 
 /**
- * sitemap.xml otimizado para a landing Voltta.
- * Prioriza home + conversão (signup) e inclui imagens do hero.
+ * sitemap.xml — home, conversão e landings por vertical (SEO).
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date("2026-08-10");
+  const lastModified = new Date("2026-08-16");
 
   return [
     {
@@ -20,6 +20,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
         `${SITE_URL}/marketing/feature-whatsapp.webp`,
       ],
     },
+    ...VERTICAL_LIST.map((v) => ({
+      url: `${SITE_URL}${v.path}`,
+      lastModified,
+      changeFrequency: "weekly" as const,
+      priority: 0.95,
+    })),
     {
       url: `${SITE_URL}/signup`,
       lastModified,
