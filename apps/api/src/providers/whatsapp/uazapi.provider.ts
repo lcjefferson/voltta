@@ -241,7 +241,9 @@ export class UazapiProvider implements WhatsappProvider {
       enabled: true,
       url: input.url,
       events: input.events || ['messages', 'connection'],
-      addUrlEvents: true,
+      // Importante: NÃO anexar /messages na URL — quebra ?companyId= e gera 404.
+      addUrlEvents: false,
+      addUrlTypesMessages: false,
       excludeMessages: ['wasSentByApi', 'fromMeYes'],
       action: 'add',
     };

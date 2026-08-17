@@ -123,7 +123,7 @@ export class WhatsappService {
   }
 
   private async registerWebhook(companyId: string, instanceToken: string) {
-    if (!this.provider.setWebhook) return;
+    if (!this.provider.setWebhook) return false;
     const url = this.webhookUrl(companyId);
     try {
       await this.provider.setWebhook({
@@ -132,12 +132,30 @@ export class WhatsappService {
         events: ['messages', 'connection'],
       });
       this.logger.log(`Webhook Uazapi registrado: ${url}`);
+      return true;
     } catch (error) {
-      this.logger.warn(
-        `Falha ao registrar webhook Uazapi: ${
+      this.logger.error(
+        `Falha ao registrar webhook Uazapi (${url}): ${
           error instanceof Error ? error.message : 'erro'
         }`,
       );
+      return false;
+    }
+  }
+
+  /** Re-registra webhook se a conexão estiver ativa (útil após corrigir WEBHOOK_PUBLIC_URL). */
+  private async ensureWebhook(companyId: string, credentialsEncrypted: string | null) {
+    if (!credentialsEncrypted) return false;
+    try {
+      const creds = this.crypto.decrypt<StoredCreds>(credentialsEncrypted);
+      return await this.registerWebhook(companyId, creds.instanceToken);
+    } catch (error) {
+      this.logger.warn(
+        `ensureWebhook falhou: ${
+          error instanceof Error ? error.message : 'erro'
+        }`,
+      );
+      return false;
     }
   }
 
@@ -158,6 +176,7 @@ export class WhatsappService {
     let paircode: string | null = null;
     let profileName: string | null = null;
     let status = row.status;
+    let webhookRegistered: boolean | null = null;
 
     try {
       if (row.credentialsEncrypted) {
@@ -171,6 +190,12 @@ export class WhatsappService {
           where: { id: row.id },
           data: { status, lastHealthcheckAt: new Date() },
         });
+        if (status === WhatsappConnectionStatus.CONNECTED) {
+          webhookRegistered = await this.registerWebhook(
+            companyId,
+            creds.instanceToken,
+          );
+        }
       }
     } catch (error) {
       const statusCode = (error as { statusCode?: number })?.statusCode;
@@ -199,6 +224,7 @@ export class WhatsappService {
       profileName,
       lastHealthcheckAt: row.lastHealthcheckAt,
       webhookUrl: this.webhookUrl(companyId),
+      webhookRegistered,
     };
   }
 
@@ -292,7 +318,10 @@ export class WhatsappService {
       data: { status, lastHealthcheckAt: new Date() },
     });
 
-    await this.registerWebhook(companyId, creds.instanceToken);
+    const webhookRegistered = await this.registerWebhook(
+      companyId,
+      creds.instanceToken,
+    );
 
     return {
       id: row.id,
@@ -304,6 +333,7 @@ export class WhatsappService {
       paircode: connected.paircode || null,
       profileName: connected.profileName || null,
       webhookUrl: this.webhookUrl(companyId),
+      webhookRegistered,
     };
   }
 
@@ -525,14 +555,27 @@ export class WhatsappService {
    * Docs: https://docs.uazapi.com/
    */
   async handleUazapiWebhook(companyId: string | undefined, body: Record<string, unknown>) {
-    if (!companyId) {
+    const resolvedCompanyId =
+      companyId ||
+      pickString(
+        body.companyId,
+        (body as { company_id?: string }).company_id,
+      );
+
+    if (!resolvedCompanyId) {
+      this.logger.warn('Webhook Uazapi ignorado: missing_companyId');
       return { received: true, ignored: 'missing_companyId' };
     }
 
     const company = await this.prisma.company.findUnique({
-      where: { id: companyId },
+      where: { id: resolvedCompanyId },
     });
-    if (!company) return { received: true, ignored: 'company_not_found' };
+    if (!company) {
+      this.logger.warn(
+        `Webhook Uazapi ignorado: company_not_found (${resolvedCompanyId})`,
+      );
+      return { received: true, ignored: 'company_not_found' };
+    }
 
     const event = pickString(
       body.EventType,
@@ -541,12 +584,15 @@ export class WhatsappService {
       (body as { messageEvent?: string }).messageEvent,
     )?.toLowerCase();
 
-    // connection events — refresh status
-    if (event?.includes('connection') || body.status) {
-      const statusRaw = pickString(body.status, (body.instance as { status?: string })?.status);
+    // Só atualiza status da conexão em eventos de connection (não em status de mensagem).
+    if (event?.includes('connection')) {
+      const statusRaw = pickString(
+        body.status,
+        (body.instance as { status?: string })?.status,
+      );
       if (statusRaw) {
         await this.prisma.whatsappConnection.updateMany({
-          where: { companyId },
+          where: { companyId: resolvedCompanyId },
           data: {
             status: toPrismaStatus(statusRaw.toLowerCase()),
             lastHealthcheckAt: new Date(),
@@ -555,14 +601,18 @@ export class WhatsappService {
       }
     }
 
-    const nested = (body.message || body.data || body.chat || body) as Record<
-      string,
-      unknown
-    >;
+    const nested = (body.message ||
+      body.data ||
+      body.chat ||
+      (body as { msg?: unknown }).msg ||
+      body) as Record<string, unknown>;
+    const key = (nested.key || body.key) as Record<string, unknown> | undefined;
+
     const fromMe =
       nested.fromMe === true ||
       nested.fromMe === 'true' ||
       body.fromMe === true ||
+      key?.fromMe === true ||
       pickString(nested.owner, nested.sender) === 'me';
 
     if (fromMe) {
@@ -573,13 +623,20 @@ export class WhatsappService {
       nested.chatid,
       nested.chatId,
       nested.wa_chatid,
+      nested.sender_pn,
+      nested.senderPn,
       nested.sender,
       nested.phone,
       nested.from,
+      nested.remoteJid,
+      key?.remoteJid as string | undefined,
       body.chatid,
       body.phone,
     );
     if (!chatId) {
+      this.logger.warn(
+        `Webhook Uazapi ignorado: no_phone (company=${resolvedCompanyId}, event=${event || '-'})`,
+      );
       return { received: true, ignored: 'no_phone' };
     }
 
@@ -588,7 +645,14 @@ export class WhatsappService {
       return { received: true, ignored: 'group' };
     }
 
-    const phone = chatId.replace(/@.*/, '');
+    const phone = chatId.replace(/@.*/, '').replace(/\D/g, '');
+    if (!phone || phone.length < 8) {
+      this.logger.warn(
+        `Webhook Uazapi ignorado: invalid_phone (${chatId}) company=${resolvedCompanyId}`,
+      );
+      return { received: true, ignored: 'invalid_phone' };
+    }
+
     const name = pickString(
       nested.wa_contactName,
       nested.senderName,
@@ -602,22 +666,39 @@ export class WhatsappService {
       nested.body,
       nested.content,
       nested.message,
+      nested.conversation,
       (nested.message as { conversation?: string })?.conversation,
       body.text,
     );
 
     const lead = await this.customers.upsertLeadFromWhatsapp({
-      companyId,
+      companyId: resolvedCompanyId,
       whatsapp: phone,
       name,
       message: text,
     });
+
+    this.logger.log(
+      `Lead WhatsApp upsert company=${resolvedCompanyId} phone=***${phone.slice(-4)} leadId=${lead?.id} stage=${lead?.lifecycleStage}`,
+    );
 
     return {
       received: true,
       leadId: lead?.id,
       stage: lead?.lifecycleStage,
       event,
+    };
+  }
+
+  async reRegisterWebhook(companyId: string) {
+    const row = await this.getRow(companyId);
+    if (!row?.credentialsEncrypted) {
+      throw new BadRequestException('Conecte o WhatsApp primeiro');
+    }
+    const ok = await this.ensureWebhook(companyId, row.credentialsEncrypted);
+    return {
+      webhookRegistered: ok,
+      webhookUrl: this.webhookUrl(companyId),
     };
   }
 }
@@ -669,6 +750,22 @@ class WhatsappController {
     @Query('companyId') companyId?: string,
   ) {
     return this.service.handleUazapiWebhook(companyId, body || {});
+  }
+
+  /** Aceita URL com evento anexado pelo Uazapi (legado / addUrlEvents). */
+  @Public()
+  @Post('webhooks/uazapi/:event')
+  webhookWithEvent(
+    @Body() body: Record<string, unknown>,
+    @Query('companyId') companyId?: string,
+  ) {
+    return this.service.handleUazapiWebhook(companyId, body || {});
+  }
+
+  @Post('connection/webhook')
+  @Roles(RoleCode.ADMIN)
+  reRegisterWebhook(@CurrentUser() u: AuthUser) {
+    return this.service.reRegisterWebhook(u.companyId);
   }
 }
 

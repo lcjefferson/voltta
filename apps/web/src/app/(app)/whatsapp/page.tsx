@@ -19,6 +19,8 @@ type Connection = {
   paircode?: string | null;
   profileName?: string | null;
   instanceName?: string | null;
+  webhookUrl?: string | null;
+  webhookRegistered?: boolean | null;
 };
 
 function qrImageSrc(qrcode?: string | null) {
@@ -63,6 +65,15 @@ export default function WhatsappPage() {
       }),
   });
 
+  const reRegisterWebhook = useMutation({
+    mutationFn: () =>
+      api<{ webhookRegistered: boolean; webhookUrl: string }>(
+        "/whatsapp/connection/webhook",
+        { method: "POST", body: "{}" },
+      ),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["whatsapp-connection"] }),
+  });
+
   useEffect(() => {
     if (data?.status === "CONNECTING") {
       const t = setInterval(() => void refetch(), 4000);
@@ -104,6 +115,51 @@ export default function WhatsappPage() {
               Perfil: <strong>{data.profileName}</strong>
               {data.instanceName ? ` · ${data.instanceName}` : ""}
             </p>
+          )}
+
+          {data?.connected && (
+            <div className="mt-4 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-sm">
+              <p className="font-semibold text-neutral-800">
+                Captação de leads
+                {data.webhookRegistered === true
+                  ? " · webhook OK"
+                  : data.webhookRegistered === false
+                    ? " · webhook com falha"
+                    : ""}
+              </p>
+              <p className="mt-1 text-neutral-500">
+                Quem mandar mensagem no WhatsApp entra em{" "}
+                <strong>Leads</strong> (se ainda não for cliente). Abra a página
+                Leads após o teste.
+              </p>
+              {data.webhookUrl && (
+                <p className="mt-2 break-all font-mono text-[11px] text-neutral-400">
+                  {data.webhookUrl}
+                </p>
+              )}
+              <Button
+                type="button"
+                variant="outline"
+                className="mt-3"
+                disabled={reRegisterWebhook.isPending}
+                onClick={() => reRegisterWebhook.mutate()}
+              >
+                {reRegisterWebhook.isPending
+                  ? "REATIVANDO..."
+                  : "REATIVAR WEBHOOK DE LEADS"}
+              </Button>
+              {reRegisterWebhook.isSuccess && (
+                <p className="mt-2 text-sm text-emerald-700">
+                  Webhook reativado. Envie uma mensagem de teste para o número
+                  conectado.
+                </p>
+              )}
+              {reRegisterWebhook.isError && (
+                <p className="mt-2 text-sm text-red-600">
+                  {(reRegisterWebhook.error as Error).message}
+                </p>
+              )}
+            </div>
           )}
 
           <div className="mt-6 flex flex-wrap gap-3">
