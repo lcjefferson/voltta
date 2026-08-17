@@ -100,11 +100,12 @@ export function BookingLinkCard({ dismissible = false }: Props) {
         </Tooltip>
       )}
       <p className="text-xs font-bold tracking-[.18em] text-[#9b7a44]">
-        LINK PÚBLICO
+        LINK CURTO
       </p>
       <h3 className="mt-1 font-bold">Agendamento online</h3>
       <p className="mt-1 text-sm text-neutral-600">
-        Compartilhe no Instagram, bio ou WhatsApp. O cliente marca sozinho.
+        Compartilhe no Instagram, bio ou WhatsApp. Formato:{" "}
+        <span className="font-mono text-[#9b7a44]">/b/{slug}</span>
       </p>
       <p className="mt-3 break-all rounded-md bg-white px-3 py-2 font-mono text-sm text-neutral-800">
         {absolute}

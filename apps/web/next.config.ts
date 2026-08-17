@@ -11,11 +11,19 @@ const nextConfig: NextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   async redirects() {
-    return Object.entries(blogRedirects).map(([from, to]) => ({
-      source: `/blog/${from}`,
-      destination: `/blog/${to}`,
-      permanent: true,
-    }));
+    return [
+      // Link curto oficial: /b/:slug (mantém /agendar só como redirecionamento)
+      {
+        source: "/agendar/:slug",
+        destination: "/b/:slug",
+        permanent: true,
+      },
+      ...Object.entries(blogRedirects).map(([from, to]) => ({
+        source: `/blog/${from}`,
+        destination: `/blog/${to}`,
+        permanent: true,
+      })),
+    ];
   },
 };
 

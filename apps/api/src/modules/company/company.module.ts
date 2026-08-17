@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -11,7 +12,9 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
+  MinLength,
   ValidateIf,
 } from 'class-validator';
 import { BusinessType, Prisma, RoleCode } from '@prisma/client';
@@ -28,6 +31,42 @@ import {
   normalizeBusinessHours,
 } from '../../common/business-hours';
 
+const RESERVED_SLUGS = new Set([
+  'b',
+  'blog',
+  'login',
+  'signup',
+  'agendar',
+  'agenda',
+  'dashboard',
+  'leads',
+  'clientes',
+  'configuracoes',
+  'whatsapp',
+  'assinatura',
+  'onboarding',
+  'api',
+  'docs',
+  'health',
+  'ready',
+  'para-barbearias',
+  'para-saloes',
+  'para-estetica',
+  'admin',
+  'app',
+  'www',
+]);
+
+function slugify(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 48);
+}
+
 class CompanyDto {
   @IsOptional()
   @IsString()
@@ -40,6 +79,16 @@ class CompanyDto {
   @IsOptional()
   @IsString()
   timezone?: string;
+
+  /** Slug curto do link público /b/{slug} */
+  @IsOptional()
+  @IsString()
+  @MinLength(2)
+  @MaxLength(48)
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, {
+    message: 'Slug inválido. Use letras minúsculas, números e hífen.',
+  })
+  slug?: string;
 
   /** URL http(s) ou data:image (logo comprimida no browser). null remove. */
   @IsOptional()
@@ -88,6 +137,24 @@ class CompanyService {
       data.businessHours = normalizeBusinessHours(
         dto.businessHours,
       ) as unknown as Prisma.InputJsonValue;
+    }
+
+    if (dto.slug !== undefined) {
+      const slug = slugify(dto.slug);
+      if (!slug || slug.length < 2) {
+        throw new BadRequestException('Slug muito curto.');
+      }
+      if (RESERVED_SLUGS.has(slug)) {
+        throw new BadRequestException('Este slug está reservado. Escolha outro.');
+      }
+      const taken = await this.prisma.company.findFirst({
+        where: { slug, NOT: { id: companyId } },
+        select: { id: true },
+      });
+      if (taken) {
+        throw new BadRequestException('Este slug já está em uso.');
+      }
+      data.slug = slug;
     }
 
     const company = await this.prisma.company.update({

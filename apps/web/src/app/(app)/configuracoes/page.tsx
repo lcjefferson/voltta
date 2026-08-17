@@ -86,11 +86,12 @@ export default function ConfiguracoesPage() {
     queryFn: () => api<Profile>("/auth/me"),
   });
 
-  const { register, handleSubmit } = useForm({
+  const { register, handleSubmit, watch } = useForm({
     values: {
       companyName: company?.name || "",
       phone: company?.phone || "",
       businessType: company?.businessType || "BARBERSHOP",
+      slug: company?.slug || "",
     },
   });
 
@@ -168,14 +169,22 @@ export default function ConfiguracoesPage() {
       name: string;
       phone: string;
       businessType: string;
+      slug: string;
       businessHours: BusinessHours;
     }) =>
-      api("/company", {
+      api<{ slug: string; name: string }>("/company", {
         method: "PATCH",
         body: JSON.stringify(payload),
       }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["company"] });
+      if (authUser && accessToken && refreshToken) {
+        setAuth(accessToken, refreshToken, {
+          ...authUser,
+          companyName: data.name || authUser.companyName,
+          companySlug: data.slug || authUser.companySlug,
+        });
+      }
     },
   });
 
@@ -439,6 +448,7 @@ export default function ConfiguracoesPage() {
                 name: v.companyName,
                 phone: v.phone,
                 businessType: v.businessType,
+                slug: v.slug,
                 businessHours: hours,
               }),
             )}
@@ -464,11 +474,29 @@ export default function ConfiguracoesPage() {
               <Label>WhatsApp</Label>
               <Input {...register("phone")} placeholder="(11) 99999-9999" />
             </div>
-            {company?.slug && (
-              <p className="text-sm text-neutral-500">
-                Slug do link: <span className="font-mono">{company.slug}</span>
+            <div>
+              <Label>Slug do link curto</Label>
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 text-sm text-neutral-500">/b/</span>
+                <Input
+                  {...register("slug", {
+                    required: true,
+                    pattern: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+                    minLength: 2,
+                    maxLength: 48,
+                  })}
+                  placeholder="minha-barbearia"
+                  className="font-mono lowercase"
+                />
+              </div>
+              <p className="mt-1 text-xs text-neutral-500">
+                Link público:{" "}
+                <span className="font-mono text-[#9b7a44]">
+                  /b/{watch("slug") || "seu-slug"}
+                </span>
+                . Use só letras minúsculas, números e hífen.
               </p>
-            )}
+            </div>
 
             <div className="border-t border-neutral-200 pt-5">
               <h3 className="font-bold">Horário de funcionamento</h3>
