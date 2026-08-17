@@ -1,11 +1,11 @@
 import type { NextConfig } from "next";
-import path from "path";
 import blogRedirects from "./src/lib/blog/redirects.json";
 
 const nextConfig: NextConfig = {
-  // Necessário para o Dockerfile (COPY .next/standalone + node server.js)
+  // Necessário para o Dockerfile (COPY .next/standalone + node server.js).
+  // Não usar outputFileTracingRoot apontando pro monorepo: o Coolify builda
+  // só apps/web e o CMD é `node server.js` na raiz do standalone.
   output: "standalone",
-  outputFileTracingRoot: path.join(__dirname, "../.."),
   images: {
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
