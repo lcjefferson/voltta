@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="VOLTTA">
+  <rect width="32" height="32" rx="7" fill="#171715"/>
+  <path
+    d="M6 7 L16 26 L26 7"
+    fill="none"
+    stroke="#c4a574"
+    stroke-width="4.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M12.5 7 H19.5"
+    fill="none"
+    stroke="#c4a574"
+    stroke-width="3.2"
+    stroke-linecap="round"
+    opacity="0.55"
+  />
+</svg>
