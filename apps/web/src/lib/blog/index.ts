@@ -4,6 +4,7 @@ import { saloesPosts } from "@/content/blog/saloes";
 import { saloesPilarPosts } from "@/content/blog/saloes-pilares";
 import { esteticaPosts } from "@/content/blog/estetica";
 import { esteticaPilarPosts } from "@/content/blog/estetica-pilares";
+import { REDIRECTED_BLOG_SLUGS } from "@/lib/blog/redirects";
 import type { BlogNiche, BlogPost } from "@/lib/blog/types";
 import { SITE_URL } from "@/lib/seo";
 
@@ -14,7 +15,9 @@ export const allBlogPosts: BlogPost[] = [
   ...(saloesPilarPosts as BlogPost[]),
   ...(esteticaPosts as BlogPost[]),
   ...(esteticaPilarPosts as BlogPost[]),
-].sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
+]
+  .filter((p) => !REDIRECTED_BLOG_SLUGS.has(p.slug))
+  .sort((a, b) => (a.publishedAt < b.publishedAt ? 1 : -1));
 
 export function getPostBySlug(slug: string) {
   return allBlogPosts.find((p) => p.slug === slug);

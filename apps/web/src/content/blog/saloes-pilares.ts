@@ -152,7 +152,7 @@ export const saloesPilarPosts: NichePost[] = [
   {
     slug: "trocar-planilha-por-sistema-salao",
     niche: "saloes",
-    title: "Trocar planilha por sistema no salão: quando vale e como fazer",
+    title: "Sair da planilha: como migrar o salão para um sistema de agenda",
     description:
       "Saiu da planilha e do caderno? Veja quando trocar por sistema de salão, como migrar sem travar e o que priorizar.",
     keywords: [
@@ -216,7 +216,7 @@ export const saloesPilarPosts: NichePost[] = [
   {
     slug: "sistema-salao-com-whatsapp-integrado",
     niche: "saloes",
-    title: "Sistema para salão com WhatsApp integrado: o que muda na recepção",
+    title: "WhatsApp integrado ao sistema do salão: menos digitação na recepção",
     description:
       "Sistema com WhatsApp integrado reduz confirmação manual no salão. Entenda o fluxo ideal de lembrete, confirmação e agenda.",
     keywords: [
@@ -348,7 +348,7 @@ export const saloesPilarPosts: NichePost[] = [
   {
     slug: "como-criar-agenda-online-salao",
     niche: "saloes",
-    title: "Como criar agenda online para salão de beleza (passo a passo)",
+    title: "Como criar agenda online no salão: serviços, equipe e link público",
     description:
       "Aprenda a criar agenda online para salão: serviços, profissionais, link público e lembrete no WhatsApp sem complicar.",
     keywords: [
@@ -492,7 +492,7 @@ export const saloesPilarPosts: NichePost[] = [
   {
     slug: "agenda-digital-vs-caderno-salao",
     niche: "saloes",
-    title: "Agenda digital vs caderno no salão: o que muda de verdade",
+    title: "Caderno vs agenda digital no salão: custo do erro e da fila",
     description:
       "Agenda digital vs caderno no salão: compare faltas, conflitos de horário e WhatsApp — e saiba quando migrar.",
     keywords: [
@@ -848,7 +848,7 @@ export const saloesPilarPosts: NichePost[] = [
   {
     slug: "agendamento-pelo-whatsapp-salao",
     niche: "saloes",
-    title: "Agendamento pelo WhatsApp no salão: organize sem virar secretária",
+    title: "Recepção no WhatsApp: como organizar agendamentos sem virar secretária",
     description:
       "Agendamento pelo WhatsApp no salão pode ser organizado: use link, confirmação automática e regras claras na conversa.",
     keywords: [
@@ -990,7 +990,8 @@ export const saloesPilarPosts: NichePost[] = [
   {
     slug: "cliente-falta-sem-avisar-salao",
     niche: "saloes",
-    title: "Cliente falta sem avisar no salão: o que fazer (sem perder a carteira)",
+    title:
+      "Faltas e no-show no salão: lembrete WhatsApp, confirmação e política",
     description:
       "Cliente faltou sem avisar? Veja política clara, lembrete no WhatsApp e como reduzir reincidência no salão.",
     keywords: [

@@ -397,7 +397,7 @@ export const esteticaPosts: NichePost[] = [
   {
     slug: "lembrete-manutencao-cilios",
     niche: "estetica",
-    title: "Lembrete de manutenção de cílios: como não perder o ciclo",
+    title: "Lembrete de manutenção de cílios: timing certo do ciclo",
     description:
       "Estratégias de lembrete de manutenção de cílios a cada 15–20 dias para manter volume, agenda cheia e clientes fiéis.",
     keywords: [
@@ -463,7 +463,7 @@ export const esteticaPosts: NichePost[] = [
   {
     slug: "intervalo-retorno-manicure",
     niche: "estetica",
-    title: "Intervalo de retorno na manicure: 15, 21 ou 28 dias?",
+    title: "Prazo de retorno na manicure: 15, 21 ou 28 dias na prática",
     description:
       "Entenda o intervalo de retorno ideal na manicure por tipo de serviço (esmaltação, gel, alongamento) e como combinar isso com a cliente.",
     keywords: [
@@ -897,7 +897,7 @@ export const esteticaPosts: NichePost[] = [
   {
     slug: "fidelizar-clientes-manicure",
     niche: "estetica",
-    title: "Como fidelizar clientes na manicure com experiência e retorno",
+    title: "Fidelizar na manicure: experiência na cadeira e retorno marcado",
     description:
       "Estratégias para fidelizar clientes na manicure: padrão de atendimento, intervalo de manutenção e comunicação no momento certo.",
     keywords: [
@@ -1021,7 +1021,7 @@ export const esteticaPosts: NichePost[] = [
   {
     slug: "app-para-manicure",
     niche: "estetica",
-    title: "App para manicure: o que buscar antes de escolher",
+    title: "App ou sistema para manicure: o que buscar antes de escolher",
     description:
       "Critérios para escolher um app para manicure: agenda no celular, lembretes de retorno, link de agendamento e uso simples no dia a dia.",
     keywords: [
@@ -1208,7 +1208,7 @@ export const esteticaPosts: NichePost[] = [
   {
     slug: "nao-perder-manutencao-unha-cilios",
     niche: "estetica",
-    title: "Como não perder manutenção de unha e cílios na agenda",
+    title: "Manutenção de unha e cílios: não perder o ciclo na agenda",
     description:
       "Método prático para não perder manutenção de unha e cílios: intervalos, lembretes, lista de retorno e vagas protegidas na agenda.",
     keywords: [

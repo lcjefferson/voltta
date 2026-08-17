@@ -83,7 +83,7 @@ export const esteticaPilarPosts: NichePost[] = [
   {
     slug: "sistema-gestao-estudio-estetica-escolher",
     niche: "estetica",
-    title: "Sistema de gestão para estúdio de estética: como escolher sem errar",
+    title: "Como escolher sistema para clínica ou estúdio de estética",
     description:
       "Checklist prático para escolher sistema de gestão no estúdio de estética: agenda, WhatsApp e link de marcação. Evite pagar por o que não usa.",
     keywords: [
@@ -221,7 +221,7 @@ export const esteticaPilarPosts: NichePost[] = [
   {
     slug: "sistema-estetica-com-agenda-whatsapp",
     niche: "estetica",
-    title: "Sistema de estética com agenda e WhatsApp: o combo que reduz falta",
+    title: "Agenda + WhatsApp na estética: o combo que reduz falta",
     description:
       "Por que agenda online + lembrete no WhatsApp é o combo mais útil em clínica e estúdio de estética. Veja como montar o fluxo sem complicar.",
     keywords: [
@@ -290,7 +290,7 @@ export const esteticaPilarPosts: NichePost[] = [
   {
     slug: "vale-a-pena-software-para-estetica",
     niche: "estetica",
-    title: "Vale a pena software para estética? Quando o investimento se paga",
+    title: "Vale a pena software para estética? ROI e quando o plano se paga",
     description:
       "Vale a pena software para estética? Veja quando agenda online e lembretes no WhatsApp se pagam em horários recuperados — e quando ainda não é a hora.",
     keywords: [
@@ -359,7 +359,7 @@ export const esteticaPilarPosts: NichePost[] = [
   {
     slug: "como-montar-agenda-online-estetica",
     niche: "estetica",
-    title: "Como montar agenda online na estética: passo a passo prático",
+    title: "Montar agenda online na estética: procedimentos, duração e link",
     description:
       "Passo a passo para montar agenda online na estética: duração dos procedimentos, profissionais, link de booking e lembretes no WhatsApp.",
     keywords: [
@@ -977,7 +977,8 @@ export const esteticaPilarPosts: NichePost[] = [
   {
     slug: "no-show-estetica-como-evitar",
     niche: "estetica",
-    title: "No-show na estética: como evitar faltas e proteger a agenda",
+    title:
+      "No-show na estética: confirmação, lembrete WhatsApp e como proteger a agenda",
     description:
       "No-show na estética: causas comuns e como evitar com agenda online, confirmação no WhatsApp e política clara — sem complicar o atendimento.",
     keywords: [

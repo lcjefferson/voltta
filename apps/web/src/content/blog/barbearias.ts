@@ -232,7 +232,7 @@ export const barbeariasPosts: NichePost[] = [
   {
     slug: "agendamento-online-barbeiro",
     niche: "barbearias",
-    title: "Agendamento online para barbeiro: menos WhatsApp, mais corte",
+    title: "Barbeiro solo: agendamento online sem viver no WhatsApp",
     description:
       "Agendamento online para barbeiro libera a agenda e o WhatsApp. Aprenda a montar o fluxo e reduzir mensagens de “tem horário?”.",
     keywords: [
@@ -442,7 +442,7 @@ export const barbeariasPosts: NichePost[] = [
   {
     slug: "como-organizar-agenda-da-barbearia",
     niche: "barbearias",
-    title: "Como organizar a agenda da barbearia sem caderno e sem caos",
+    title: "Rotina diária da agenda: horários, encaixes e picos na barbearia",
     description:
       "Aprenda a organizar a agenda da barbearia: duração de serviços, buffers, profissionais e rotina diária que realmente funciona.",
     keywords: [
@@ -997,7 +997,7 @@ export const barbeariasPosts: NichePost[] = [
   {
     slug: "vale-a-pena-sistema-de-gestao-barbearia",
     niche: "barbearias",
-    title: "Vale a pena sistema de gestão para barbearia? Conta na prática",
+    title: "Vale a pena sistema para barbearia? ROI, preço e quando se paga",
     description:
       "Vale a pena sistema de gestão na barbearia? Faça a conta de faltas, tempo no WhatsApp e mensalidade antes de decidir.",
     keywords: [
@@ -1340,7 +1340,7 @@ export const barbeariasPosts: NichePost[] = [
   {
     slug: "como-fidelizar-clientes-barbearia",
     niche: "barbearias",
-    title: "Como fidelizar clientes na barbearia: hábitos que geram retorno",
+    title: "Fidelizar na barbearia: hábitos de atendimento que geram retorno",
     description:
       "Como fidelizar clientes na barbearia com experiência, horário recorrente e WhatsApp. Hábitos simples que aumentam frequência.",
     keywords: [

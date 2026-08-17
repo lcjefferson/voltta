@@ -187,7 +187,7 @@ export const saloesPosts: NichePost[] = [
   {
     slug: "agendamento-online-salao-de-beleza",
     niche: "saloes",
-    title: "Agendamento online para salão de beleza: como liberar a recepção",
+    title: "Link de agendamento no salão: liberar a recepção do “tem horário?”",
     description:
       "Entenda como o agendamento online para salão de beleza reduz mensagens repetidas e deixa a cliente marcar no horário que preferir.",
     keywords: [
@@ -361,7 +361,7 @@ export const saloesPosts: NichePost[] = [
   {
     slug: "como-organizar-agenda-do-salao",
     niche: "saloes",
-    title: "Como organizar a agenda do salão sem conflito de horário",
+    title: "Grade do salão: evitar conflito de horário entre profissionais",
     description:
       "Passo a passo para organizar a agenda do salão: duração de serviços, bloqueios, encaixes e regras claras para a equipe.",
     keywords: [
@@ -477,7 +477,7 @@ export const saloesPosts: NichePost[] = [
   {
     slug: "como-recuperar-clientes-do-salao",
     niche: "saloes",
-    title: "Como recuperar clientes do salão que sumiram da agenda",
+    title: "Clientes sumidos do salão: roteiro de reativação no WhatsApp",
     description:
       "Roteiro para recuperar clientes inativas do salão com mensagens no WhatsApp, ofertas de retorno e acompanhamento por serviço.",
     keywords: [
@@ -883,7 +883,7 @@ export const saloesPosts: NichePost[] = [
   {
     slug: "retorno-de-coloracao-e-tratamento",
     niche: "saloes",
-    title: "Retorno de coloração e tratamento: como remarcar a cliente no prazo certo",
+    title: "Retorno de coloração e tratamento: remarcar no prazo certo",
     description:
       "Aprenda a estruturar retorno de coloração, botox e tratamentos no salão com lembretes no WhatsApp e agenda de manutenção.",
     keywords: [
@@ -1115,7 +1115,7 @@ export const saloesPosts: NichePost[] = [
   {
     slug: "fidelizar-clientes-salao-de-beleza",
     niche: "saloes",
-    title: "Fidelizar clientes no salão de beleza: rotina, experiência e retorno",
+    title: "Fidelizar no salão: experiência, rotina e retorno programado",
     description:
       "Como fidelizar clientes no salão de beleza com experiência consistente, lembretes de retorno, histórico e comunicação no WhatsApp.",
     keywords: [

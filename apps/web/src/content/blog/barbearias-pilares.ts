@@ -14,7 +14,7 @@ export const barbeariasPilarPosts: NichePost[] = [
   {
     slug: "melhor-sistema-para-barbearia-comparar",
     niche: "barbearias",
-    title: "Melhor sistema para barbearia: como comparar sem cair em marketing",
+    title: "Melhor sistema para barbearia: checklist para comparar opções",
     description:
       "Compare o melhor sistema para barbearia com critérios reais: agenda, WhatsApp e link de booking. Evite software inchado e escolha o que cabe na operação.",
     keywords: [
@@ -154,7 +154,7 @@ export const barbeariasPilarPosts: NichePost[] = [
   {
     slug: "sair-do-caderno-sistema-barbearia",
     niche: "barbearias",
-    title: "Sair do caderno: quando o sistema para barbearia vale a troca",
+    title: "Como migrar do caderno para o sistema na barbearia (passo a passo)",
     description:
       "Saiba quando trocar o caderno por um sistema para barbearia. Software com agenda online e WhatsApp reduz erro, falta e horário duplicado no dia a dia.",
     keywords: [
@@ -223,7 +223,7 @@ export const barbeariasPilarPosts: NichePost[] = [
   {
     slug: "sistema-barbearia-integrado-whatsapp",
     niche: "barbearias",
-    title: "Sistema para barbearia integrado ao WhatsApp: o que muda",
+    title: "WhatsApp + sistema na barbearia: confirmação sem digitar tudo",
     description:
       "Sistema para barbearia integrado ao WhatsApp confirma horário e reduz falta. Veja como software com lembrete automático organiza a agenda sem chat infinito.",
     keywords: [
@@ -360,7 +360,7 @@ export const barbeariasPilarPosts: NichePost[] = [
   {
     slug: "como-montar-agenda-online-barbearia",
     niche: "barbearias",
-    title: "Como montar agenda online para barbearia do zero",
+    title: "Como montar agenda online na barbearia: serviços, horários e link",
     description:
       "Aprenda a montar a agenda online para barbearia: serviços, duração, profissionais e link. Passo a passo para agendar com menos WhatsApp e menos erro.",
     keywords: [
@@ -499,7 +499,7 @@ export const barbeariasPilarPosts: NichePost[] = [
   {
     slug: "agenda-digital-ou-caderno-barbearia",
     niche: "barbearias",
-    title: "Agenda digital ou caderno na barbearia: o que compensa",
+    title: "Agenda digital vs caderno: comparação custo e erro na barbearia",
     description:
       "Agenda online para barbearia versus caderno: compare erros, faltas e tempo no WhatsApp. Veja quando a agenda digital passa a valer mais que o papel.",
     keywords: [
@@ -984,7 +984,8 @@ export const barbeariasPilarPosts: NichePost[] = [
   {
     slug: "faltas-sem-aviso-barbearia-o-que-fazer",
     niche: "barbearias",
-    title: "Faltas sem aviso na barbearia: o que fazer na prática",
+    title:
+      "Faltas e no-show na barbearia: política, lembrete WhatsApp e o que fazer",
     description:
       "Faltas sem aviso na barbearia: protocolo com lembrete no WhatsApp, confirmação e política clara. Reduza no-show no agendamento e proteja horários nobres.",
     keywords: [
