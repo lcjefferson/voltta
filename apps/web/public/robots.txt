@@ -20,6 +20,7 @@ Allow: /
 Allow: /signup
 Allow: /login
 Allow: /agendar
+Allow: /b
 Allow: /blog
 Allow: /para-barbearias
 Allow: /para-saloes
@@ -53,6 +54,7 @@ Allow: /
 Allow: /signup
 Allow: /login
 Allow: /agendar
+Allow: /b
 Allow: /blog
 Allow: /para-barbearias
 Allow: /para-saloes

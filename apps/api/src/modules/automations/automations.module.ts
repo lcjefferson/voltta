@@ -309,7 +309,7 @@ export class AutomationsService {
     );
     const vars = {
       nome: input.customer.name,
-      link: `${webUrl}/agendar/${input.company.slug}`,
+      link: `${webUrl}/b/${input.company.slug}`,
       data: '',
       hora: '',
     };
@@ -751,7 +751,7 @@ export class AutomationsService {
         hour: '2-digit',
         minute: '2-digit',
       }),
-      link: `${webUrl}/agendar/${appointment.company.slug}`,
+      link: `${webUrl}/b/${appointment.company.slug}`,
       servico: options?.extraVars?.servico || 'serviço',
       ...(options?.extraVars || {}),
     };

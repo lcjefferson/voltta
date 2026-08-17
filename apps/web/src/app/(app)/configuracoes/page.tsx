@@ -12,6 +12,7 @@ import { PageTitle } from "@/components/app-page";
 import { api } from "@/lib/api";
 import { BUSINESS_TYPES } from "@/lib/business-types";
 import { useAuthStore } from "@/lib/auth-store";
+import { fileToLogoDataUrl } from "@/lib/logo-upload";
 
 type DayBreak = { start: string; end: string };
 type DayHours = {
@@ -28,6 +29,7 @@ type Company = {
   name: string;
   slug: string;
   phone?: string | null;
+  logoUrl?: string | null;
   businessType?: string;
   businessHours: BusinessHours;
 };
@@ -113,10 +115,53 @@ export default function ConfiguracoesPage() {
     profileEmail.toLowerCase().trim() !== profile.email.toLowerCase();
 
   const [hours, setHours] = useState<BusinessHours>(DEFAULT_HOURS);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [logoOk, setLogoOk] = useState(false);
 
   useEffect(() => {
     if (company?.businessHours) setHours(company.businessHours);
   }, [company?.businessHours]);
+
+  useEffect(() => {
+    setLogoPreview(company?.logoUrl || null);
+  }, [company?.logoUrl]);
+
+  const saveLogo = useMutation({
+    mutationFn: (logoUrl: string | null) =>
+      api("/company", {
+        method: "PATCH",
+        body: JSON.stringify({ logoUrl }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["company"] });
+      setLogoOk(true);
+      setLogoError(null);
+      setTimeout(() => setLogoOk(false), 2500);
+    },
+    onError: (err: Error) => {
+      setLogoError(err.message);
+      setLogoOk(false);
+    },
+  });
+
+  async function onLogoFile(file: File | null) {
+    if (!file) return;
+    setLogoBusy(true);
+    setLogoError(null);
+    try {
+      const dataUrl = await fileToLogoDataUrl(file);
+      setLogoPreview(dataUrl);
+      await saveLogo.mutateAsync(dataUrl);
+    } catch (err) {
+      setLogoError(
+        err instanceof Error ? err.message : "Falha ao enviar a logo.",
+      );
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   const save = useMutation({
     mutationFn: (payload: {
@@ -317,6 +362,72 @@ export default function ConfiguracoesPage() {
               {saveProfile.isPending ? "SALVANDO..." : "SALVAR CONTA"}
             </Button>
           </form>
+        </Card>
+
+        <Card>
+          <h2 className="font-bold">Logo do negócio</h2>
+          <p className="mt-1 text-sm text-neutral-500">
+            Aparece no link público de agendamento ({company?.slug ? `/b/${company.slug}` : "/b/..."}
+            ).
+          </p>
+          <div className="mt-5 flex flex-wrap items-center gap-4">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
+              {logoPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={logoPreview}
+                  alt="Logo do negócio"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <span className="px-2 text-center text-[10px] font-bold tracking-wide text-neutral-400">
+                  SEM LOGO
+                </span>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="logo-upload" className="cursor-pointer">
+                <span className="inline-flex h-10 items-center justify-center rounded-md border border-neutral-300 bg-white px-4 text-sm font-bold hover:bg-neutral-50">
+                  {logoBusy || saveLogo.isPending
+                    ? "ENVIANDO..."
+                    : "ESCOLHER IMAGEM"}
+                </span>
+              </Label>
+              <input
+                id="logo-upload"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="sr-only"
+                disabled={logoBusy || saveLogo.isPending}
+                onChange={(e) => {
+                  void onLogoFile(e.target.files?.[0] || null);
+                  e.target.value = "";
+                }}
+              />
+              {logoPreview && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={logoBusy || saveLogo.isPending}
+                  onClick={() => {
+                    setLogoPreview(null);
+                    saveLogo.mutate(null);
+                  }}
+                >
+                  REMOVER LOGO
+                </Button>
+              )}
+            </div>
+          </div>
+          <p className="mt-3 text-xs text-neutral-500">
+            JPG, PNG ou WEBP · até 5 MB (redimensionamos automaticamente).
+          </p>
+          {logoError && (
+            <p className="mt-2 text-sm text-red-600">{logoError}</p>
+          )}
+          {logoOk && (
+            <p className="mt-2 text-sm text-emerald-700">Logo atualizada.</p>
+          )}
         </Card>
 
         <Card>

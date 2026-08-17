@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useAuthStore } from "@/lib/auth-store";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { bookingPath } from "@/lib/booking-url";
 
-export default function AgendarIndexPage() {
+export default function ShortBookingIndexPage() {
   const router = useRouter();
   const { user, hydrated, hydrate } = useAuthStore();
 
@@ -16,7 +17,7 @@ export default function AgendarIndexPage() {
   useEffect(() => {
     if (!hydrated) return;
     if (user?.companySlug) {
-      router.replace(`/b/${user.companySlug}`);
+      router.replace(bookingPath(user.companySlug));
     }
   }, [hydrated, user?.companySlug, router]);
 
@@ -30,9 +31,6 @@ export default function AgendarIndexPage() {
         <p className="mt-3 text-white/70">
           O agendamento público precisa do slug do negócio, no formato{" "}
           <span className="font-mono text-[#c4a574]">/b/nome-do-negocio</span>.
-        </p>
-        <p className="mt-3 text-sm text-white/50">
-          Se você é o dono, abra a Agenda no painel e use o botão Copiar link.
         </p>
         <Link
           href="/agenda"

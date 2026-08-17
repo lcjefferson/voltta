@@ -3,8 +3,7 @@
 import { useParams } from "next/navigation";
 import { PublicBookingPage } from "@/components/public-booking-page";
 
-/** Mantido por compatibilidade; o link curto oficial é /b/[slug]. */
-export default function LegacyBookingRoute() {
+export default function ShortBookingRoute() {
   const { slug } = useParams<{ slug: string }>();
   return <PublicBookingPage slug={slug} />;
 }

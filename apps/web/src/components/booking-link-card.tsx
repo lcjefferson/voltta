@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Copy, ExternalLink, Check, Eye, EyeOff, X } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/lib/auth-store";
+import { bookingAbsoluteUrl, bookingPath } from "@/lib/booking-url";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -75,11 +76,8 @@ export function BookingLinkCard({ dismissible = false }: Props) {
     );
   }
 
-  const path = `/agendar/${slug}`;
-  const absolute =
-    typeof window !== "undefined"
-      ? `${window.location.origin}${path}`
-      : path;
+  const path = bookingPath(slug);
+  const absolute = bookingAbsoluteUrl(slug);
 
   async function copy() {
     await navigator.clipboard.writeText(absolute);

@@ -6,7 +6,14 @@ import {
   Module,
   Patch,
 } from '@nestjs/common';
-import { IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+  ValidateIf,
+} from 'class-validator';
 import { BusinessType, Prisma, RoleCode } from '@prisma/client';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -34,9 +41,12 @@ class CompanyDto {
   @IsString()
   timezone?: string;
 
+  /** URL http(s) ou data:image (logo comprimida no browser). null remove. */
   @IsOptional()
+  @ValidateIf((_, v) => v !== null)
   @IsString()
-  logoUrl?: string;
+  @MaxLength(900_000)
+  logoUrl?: string | null;
 
   @IsOptional()
   @IsEnum(BusinessType)

@@ -31,6 +31,7 @@ export default function robots(): MetadataRoute.Robots {
           "/signup",
           "/login",
           "/agendar",
+          "/b",
           "/blog",
           "/para-barbearias",
           "/para-saloes",
