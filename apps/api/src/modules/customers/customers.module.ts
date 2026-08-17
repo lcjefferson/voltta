@@ -80,11 +80,36 @@ class ListCustomersDto extends PaginationDto {
 
 export function normalizePhone(value?: string | null): string | null {
   if (!value) return null;
-  const digits = value.replace(/\D/g, '');
+  let digits = value.replace(/\D/g, '').replace(/^0+/, '');
   if (!digits) return null;
-  // keep BR numbers with country code when possible
+  // BR local (DDD+número) → com 55
   if (digits.length >= 10 && digits.length <= 11) return `55${digits}`;
+  // Já com país 55
+  if (digits.startsWith('55') && (digits.length === 12 || digits.length === 13)) {
+    return digits;
+  }
   return digits;
+}
+
+/** Variantes do mesmo número (com/sem 55, com/sem 9º dígito) para match de lead. */
+export function phoneMatchCandidates(value: string): string[] {
+  const canonical = normalizePhone(value);
+  if (!canonical) return [];
+  const set = new Set<string>([canonical]);
+  const local = canonical.startsWith('55') ? canonical.slice(2) : canonical;
+  set.add(local);
+  set.add(`55${local}`);
+  if (local.length === 11 && local[2] === '9') {
+    const withoutNine = `${local.slice(0, 2)}${local.slice(3)}`;
+    set.add(withoutNine);
+    set.add(`55${withoutNine}`);
+  }
+  if (local.length === 10) {
+    const withNine = `${local.slice(0, 2)}9${local.slice(2)}`;
+    set.add(withNine);
+    set.add(`55${withNine}`);
+  }
+  return [...set];
 }
 
 @Injectable()
@@ -183,6 +208,7 @@ export class CustomersService {
 
   /**
    * Contato via WhatsApp → Lead (não promove se já for CUSTOMER).
+   * Deduplica por telefone (variantes BR) e tolera webhook duplicado.
    */
   async upsertLeadFromWhatsapp(input: {
     companyId: string;
@@ -193,12 +219,25 @@ export class CustomersService {
     const whatsapp = normalizePhone(input.whatsapp);
     if (!whatsapp) return null;
 
+    const candidates = phoneMatchCandidates(whatsapp);
+    const last8 = whatsapp.slice(-8);
+
     const existing = await this.prisma.customer.findFirst({
       where: {
         companyId: input.companyId,
         deletedAt: null,
-        OR: [{ whatsapp }, { phone: whatsapp }, { whatsapp: { endsWith: whatsapp.slice(-11) } }],
+        OR: [
+          { whatsapp: { in: candidates } },
+          { phone: { in: candidates } },
+          ...(last8.length === 8
+            ? [
+                { whatsapp: { endsWith: last8 } },
+                { phone: { endsWith: last8 } },
+              ]
+            : []),
+        ],
       },
+      orderBy: { createdAt: 'asc' },
     });
 
     const message = input.message?.slice(0, 500) || null;
@@ -208,6 +247,17 @@ export class CustomersService {
       `Lead ${whatsapp.slice(-4)}`;
 
     if (existing) {
+      // Mesma mensagem em poucos segundos = webhook duplicado do provedor
+      const recentDup =
+        !!message &&
+        message === existing.lastInboundMessage &&
+        !!existing.lastInboundAt &&
+        Date.now() - existing.lastInboundAt.getTime() < 30_000;
+
+      if (recentDup) {
+        return existing;
+      }
+
       return this.prisma.customer.update({
         where: { id: existing.id },
         data: {
@@ -215,11 +265,10 @@ export class CustomersService {
             existing.name.startsWith('Lead ') && input.name?.trim()
               ? input.name.trim()
               : existing.name,
-          whatsapp: existing.whatsapp || whatsapp,
-          phone: existing.phone || whatsapp,
+          whatsapp: normalizePhone(existing.whatsapp) || whatsapp,
+          phone: normalizePhone(existing.phone) || existing.phone || whatsapp,
           lastInboundAt: new Date(),
           lastInboundMessage: message || existing.lastInboundMessage,
-          // keep CUSTOMER if already converted
           lifecycleStage: existing.lifecycleStage,
           source:
             existing.source === CustomerSource.MANUAL &&
@@ -230,19 +279,48 @@ export class CustomersService {
       });
     }
 
-    return this.prisma.customer.create({
-      data: {
-        companyId: input.companyId,
-        name: displayName,
-        whatsapp,
-        phone: whatsapp,
-        lifecycleStage: CustomerLifecycle.LEAD,
-        source: CustomerSource.WHATSAPP,
-        lastInboundAt: new Date(),
-        lastInboundMessage: message,
-        notes: message ? `Primeiro contato WhatsApp: ${message}` : undefined,
-      },
-    });
+    try {
+      return await this.prisma.customer.create({
+        data: {
+          companyId: input.companyId,
+          name: displayName,
+          whatsapp,
+          phone: whatsapp,
+          lifecycleStage: CustomerLifecycle.LEAD,
+          source: CustomerSource.WHATSAPP,
+          lastInboundAt: new Date(),
+          lastInboundMessage: message,
+          notes: message ? `Primeiro contato WhatsApp: ${message}` : undefined,
+        },
+      });
+    } catch (error) {
+      // Corrida entre dois webhooks: outro create ganhou — atualiza o existente
+      const raced = await this.prisma.customer.findFirst({
+        where: {
+          companyId: input.companyId,
+          deletedAt: null,
+          OR: [
+            { whatsapp: { in: candidates } },
+            { phone: { in: candidates } },
+            ...(last8.length === 8
+              ? [{ whatsapp: { endsWith: last8 } }]
+              : []),
+          ],
+        },
+        orderBy: { createdAt: 'asc' },
+      });
+      if (raced) {
+        return this.prisma.customer.update({
+          where: { id: raced.id },
+          data: {
+            lastInboundAt: new Date(),
+            lastInboundMessage: message || raced.lastInboundMessage,
+            whatsapp: normalizePhone(raced.whatsapp) || whatsapp,
+          },
+        });
+      }
+      throw error;
+    }
   }
 
   /**

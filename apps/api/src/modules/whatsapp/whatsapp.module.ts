@@ -584,8 +584,8 @@ export class WhatsappService {
       (body as { messageEvent?: string }).messageEvent,
     )?.toLowerCase();
 
-    // Só atualiza status da conexão em eventos de connection (não em status de mensagem).
-    if (event?.includes('connection')) {
+    // Só atualiza status da conexão em eventos de connection (não cria lead).
+    if (event?.includes('connection') && !event.includes('message')) {
       const statusRaw = pickString(
         body.status,
         (body.instance as { status?: string })?.status,
@@ -599,6 +599,18 @@ export class WhatsappService {
           },
         });
       }
+      return { received: true, ignored: 'connection_only', event };
+    }
+
+    // Ignora recibos/ack/presence — só mensagens viram lead.
+    if (
+      event &&
+      !event.includes('message') &&
+      ['ack', 'presence', 'status', 'qrcode', 'chats', 'groups', 'call'].some(
+        (x) => event.includes(x),
+      )
+    ) {
+      return { received: true, ignored: `event_${event}` };
     }
 
     const nested = (body.message ||
