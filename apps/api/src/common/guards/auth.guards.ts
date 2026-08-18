@@ -8,7 +8,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
 import { RoleCode } from '@prisma/client';
-import { IS_PUBLIC_KEY, ROLES_KEY } from '../decorators/auth.decorators';
+import {
+  AuthUser,
+  IS_PUBLIC_KEY,
+  ROLES_KEY,
+} from '../decorators/auth.decorators';
 
 @Injectable()
 export class JwtAuthGuard extends AuthGuard('jwt') {
@@ -48,6 +52,20 @@ export class RolesGuard implements CanActivate {
     if (!user) throw new UnauthorizedException();
     if (!roles.includes(user.role)) {
       throw new ForbiddenException('Permissão insuficiente');
+    }
+    return true;
+  }
+}
+
+@Injectable()
+export class PlatformAdminGuard implements CanActivate {
+  canActivate(context: ExecutionContext): boolean {
+    const { user } = context.switchToHttp().getRequest<{ user?: AuthUser }>();
+    if (!user) throw new UnauthorizedException();
+    if (!user.platformAdmin) {
+      throw new ForbiddenException(
+        'Acesso restrito à operação da plataforma',
+      );
     }
     return true;
   }

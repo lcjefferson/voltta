@@ -41,6 +41,17 @@ Roles (ADMIN / BARBEIRO / RECEPCIONISTA) são seedadas automaticamente no boot d
 
 Sem `RESEND_API_KEY`, o link de reset só aparece nos **logs da API**.
 
+## Painel da plataforma (`/admin`)
+Lista tenants (trial, em dia, inadimplente, WhatsApp, volume).
+
+No Coolify, adicione o e-mail da **sua** conta VOLTTA:
+
+```env
+PLATFORM_ADMIN_EMAILS=voce@seudominio.com
+```
+
+Save → Deploy → entre no app → menu **Plataforma**. Sem essa env, ninguém acessa `/admin`.
+
 ## Filas (BullMQ + Redis)
 A API usa Redis (`REDIS_URL`) para:
 - atrasar A2/A3/A4 com jobs duráveis

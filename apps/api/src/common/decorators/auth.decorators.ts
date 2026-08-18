@@ -16,6 +16,7 @@ export class AuthUser {
   companyId!: string;
   role!: RoleCode;
   email!: string;
+  platformAdmin?: boolean;
 }
 
 export const CurrentUser = createParamDecorator(

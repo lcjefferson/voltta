@@ -11,6 +11,7 @@ type User = {
   companyId?: string;
   companyName?: string;
   companySlug?: string;
+  platformAdmin?: boolean;
 };
 
 type AuthState = {

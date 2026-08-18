@@ -21,6 +21,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './modules/health/health.module';
 import { TrialRemindersModule } from './modules/trial-reminders/trial-reminders.module';
+import { PlatformModule } from './modules/platform/platform.module';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { TrialRemindersModule } from './modules/trial-reminders/trial-reminders.
     BillingModule,
     HealthModule,
     TrialRemindersModule,
+    PlatformModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

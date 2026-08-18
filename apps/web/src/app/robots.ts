@@ -52,6 +52,7 @@ export default function robots(): MetadataRoute.Robots {
           "/assinatura",
           "/configuracoes",
           "/onboarding",
+          "/admin",
           "/api/",
         ],
       },

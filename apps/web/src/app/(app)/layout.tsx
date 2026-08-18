@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  Building2,
   CalendarDays,
   CircleDollarSign,
   CreditCard,
@@ -21,10 +22,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuthStore } from "@/lib/auth-store";
+import { api } from "@/lib/api";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { Tooltip } from "@/components/ui/tooltip";
 
-const nav = [
+const baseNav = [
   ["Dashboard", "/dashboard", LayoutDashboard],
   ["Agenda", "/agenda", CalendarDays],
   ["Leads", "/leads", UserPlus],
@@ -40,14 +42,22 @@ const nav = [
 
 function NavLinks({
   pathname,
+  platformAdmin,
   onNavigate,
 }: {
   pathname: string;
+  platformAdmin?: boolean;
   onNavigate?: () => void;
 }) {
+  const items = platformAdmin
+    ? ([
+        ["Plataforma", "/admin", Building2],
+        ...baseNav,
+      ] as const)
+    : baseNav;
   return (
     <nav className="mt-10 space-y-1">
-      {nav.map(([label, href, Icon]) => (
+      {items.map(([label, href, Icon]) => (
         <Link
           key={href}
           href={href}
@@ -70,12 +80,33 @@ function NavLinks({
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { accessToken, user, hydrated, hydrate, clearAuth } = useAuthStore();
+  const { accessToken, user, hydrated, hydrate, patchUser, clearAuth } =
+    useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (!hydrated || !accessToken) return;
+    let cancelled = false;
+    api<{
+      name?: string;
+      email?: string;
+      emailVerified?: boolean;
+      platformAdmin?: boolean;
+      companyName?: string;
+      companySlug?: string;
+    }>("/auth/me")
+      .then((me) => {
+        if (!cancelled) patchUser(me);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrated, accessToken, patchUser]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -125,7 +156,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           VOLTTA<sup className="text-xs">™</sup>
         </Link>
         <p className="mt-2 text-xs text-white/45">Seu cliente sempre de volta.</p>
-        <NavLinks pathname={pathname} />
+        <NavLinks pathname={pathname} platformAdmin={user?.platformAdmin} />
       </aside>
 
       {menuOpen ? (
@@ -159,7 +190,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <X className="size-5" />
               </button>
             </div>
-            <NavLinks pathname={pathname} onNavigate={closeMenu} />
+            <NavLinks
+              pathname={pathname}
+              platformAdmin={user?.platformAdmin}
+              onNavigate={closeMenu}
+            />
           </aside>
         </div>
       ) : null}

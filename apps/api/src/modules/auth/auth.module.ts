@@ -13,6 +13,10 @@ import { Public, CurrentUser, AuthUser } from '../../common/decorators/auth.deco
 import { DEFAULT_BUSINESS_HOURS } from '../../common/business-hours';
 import { MailModule } from '../../providers/mail/mail.module';
 import { MailService } from '../../providers/mail/mail.service';
+import {
+  isPlatformAdminEmail,
+  parsePlatformAdminEmails,
+} from '../platform/platform-admin';
 
 class SignupDto {
   @IsString()
@@ -54,7 +58,7 @@ class UpdateProfileDto {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(private readonly config: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       secretOrKey: config.get<string>('JWT_ACCESS_SECRET') || 'dev-access-secret',
@@ -76,6 +80,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       companyId: payload.companyId,
       email: payload.email,
       role: payload.role,
+      platformAdmin: isPlatformAdminEmail(
+        payload.email,
+        parsePlatformAdminEmails(this.config.get<string>('PLATFORM_ADMIN_EMAILS')),
+      ),
     };
   }
 }
@@ -91,6 +99,12 @@ export class AuthService {
     private mail: MailService,
   ) {}
   private slug(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
+  private isPlatformAdmin(email: string) {
+    return isPlatformAdminEmail(
+      email,
+      parsePlatformAdminEmails(this.config.get<string>('PLATFORM_ADMIN_EMAILS')),
+    );
+  }
   private async tokens(user: {
     id: string;
     name?: string;
@@ -134,6 +148,7 @@ export class AuthService {
         companyId: user.companyId,
         companyName: user.company.name,
         companySlug: user.company.slug,
+        platformAdmin: this.isPlatformAdmin(user.email),
       },
     };
   }
@@ -313,6 +328,7 @@ export class AuthService {
       companyName: user.company.name,
       companySlug: user.company.slug,
       companyPhone: user.company.phone,
+      platformAdmin: this.isPlatformAdmin(user.email),
     };
   }
 
@@ -379,6 +395,7 @@ export class AuthService {
       companyName: updated.company.name,
       companySlug: updated.company.slug,
       companyPhone: updated.company.phone,
+      platformAdmin: this.isPlatformAdmin(updated.email),
     };
   }
 
