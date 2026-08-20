@@ -135,7 +135,7 @@ export default function ClientesPage() {
       <PageTitle eyebrow="RELACIONAMENTO" title="CLIENTES" />
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <Card>
-          <div className="mb-5 flex justify-between">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
             <h2 className="font-bold">Sua base de clientes</h2>
             <span className="text-sm text-neutral-500">
               {total} cadastrados

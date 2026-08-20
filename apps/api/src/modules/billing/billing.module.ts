@@ -16,6 +16,7 @@ import type { Request } from 'express';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  AllowTrialExpired,
   AuthUser,
   CurrentUser,
   Public,
@@ -220,6 +221,7 @@ class BillingService {
   }
 }
 
+@AllowTrialExpired()
 @Controller('billing')
 class BillingController {
   constructor(private readonly service: BillingService) {}
@@ -236,7 +238,6 @@ class BillingController {
     return this.service.portal(u.companyId, dto);
   }
 
-  @Roles(RoleCode.ADMIN)
   @Get('subscription')
   subscription(@CurrentUser() u: AuthUser) {
     return this.service.subscription(u.companyId);

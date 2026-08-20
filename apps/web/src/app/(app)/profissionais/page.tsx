@@ -176,7 +176,7 @@ export default function ProfissionaisPage() {
 
       <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
         <Card>
-          <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <h2 className="font-bold">Equipe do negócio</h2>
             <span className="text-sm text-neutral-500">
               {users.length} {users.length === 1 ? "pessoa" : "pessoas"}

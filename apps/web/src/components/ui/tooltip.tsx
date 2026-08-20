@@ -59,7 +59,7 @@ export function Tooltip({
   });
 
   return (
-    <span className={cn("relative inline-flex", className)}>
+    <span className={cn("relative inline-flex max-w-full", className)}>
       {child}
       {open && (
         <span

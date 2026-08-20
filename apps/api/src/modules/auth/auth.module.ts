@@ -9,7 +9,8 @@ import * as bcrypt from 'bcrypt';
 import { RoleCode, Prisma, BusinessType } from '@prisma/client';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Public, CurrentUser, AuthUser } from '../../common/decorators/auth.decorators';
+import { AllowTrialExpired, Public, CurrentUser, AuthUser } from '../../common/decorators/auth.decorators';
+import { isTrialLocked } from '../../common/trial';
 import { DEFAULT_BUSINESS_HOURS } from '../../common/business-hours';
 import { MailModule } from '../../providers/mail/mail.module';
 import { MailService } from '../../providers/mail/mail.service';
@@ -105,6 +106,42 @@ export class AuthService {
       parsePlatformAdminEmails(this.config.get<string>('PLATFORM_ADMIN_EMAILS')),
     );
   }
+  private sessionUser(user: {
+    id: string;
+    name?: string | null;
+    companyId: string;
+    email: string;
+    emailVerifiedAt?: Date | null;
+    role: { code: RoleCode };
+    company: {
+      name: string;
+      slug: string;
+      phone?: string | null;
+      status: string;
+      trialEndsAt: Date;
+    };
+  }) {
+    const platformAdmin = this.isPlatformAdmin(user.email);
+    return {
+      id: user.id,
+      name: user.name || '',
+      email: user.email,
+      emailVerified: Boolean(user.emailVerifiedAt),
+      role: user.role.code,
+      companyId: user.companyId,
+      companyName: user.company.name,
+      companySlug: user.company.slug,
+      companyPhone: user.company.phone,
+      platformAdmin,
+      companyStatus: user.company.status,
+      trialEndsAt: user.company.trialEndsAt.toISOString(),
+      trialLocked: isTrialLocked(
+        user.company.status,
+        user.company.trialEndsAt,
+        platformAdmin,
+      ),
+    };
+  }
   private async tokens(user: {
     id: string;
     name?: string;
@@ -112,7 +149,13 @@ export class AuthService {
     email: string;
     emailVerifiedAt?: Date | null;
     role: { code: RoleCode };
-    company: { name: string; slug: string };
+    company: {
+      name: string;
+      slug: string;
+      phone?: string | null;
+      status: string;
+      trialEndsAt: Date;
+    };
   }) {
     const payload: AuthUser = {
       userId: user.id,
@@ -139,17 +182,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        name: user.name || (user as unknown as { name: string }).name,
-        email: user.email,
-        emailVerified: Boolean(user.emailVerifiedAt),
-        role: user.role.code,
-        companyId: user.companyId,
-        companyName: user.company.name,
-        companySlug: user.company.slug,
-        platformAdmin: this.isPlatformAdmin(user.email),
-      },
+      user: this.sessionUser(user),
     };
   }
 
@@ -318,18 +351,7 @@ export class AuthService {
       where: { id: userId },
       include: { role: true, company: true },
     });
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      emailVerified: Boolean(user.emailVerifiedAt),
-      role: user.role.code,
-      companyId: user.companyId,
-      companyName: user.company.name,
-      companySlug: user.company.slug,
-      companyPhone: user.company.phone,
-      platformAdmin: this.isPlatformAdmin(user.email),
-    };
+    return this.sessionUser(user);
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
@@ -385,18 +407,7 @@ export class AuthService {
       });
     }
 
-    return {
-      id: updated.id,
-      name: updated.name,
-      email: updated.email,
-      emailVerified: Boolean(updated.emailVerifiedAt),
-      role: updated.role.code,
-      companyId: updated.companyId,
-      companyName: updated.company.name,
-      companySlug: updated.company.slug,
-      companyPhone: updated.company.phone,
-      platformAdmin: this.isPlatformAdmin(updated.email),
-    };
+    return this.sessionUser(updated);
   }
 
   async verifyEmail(token: string) {
@@ -495,6 +506,7 @@ const defaultRules = () => [
   },
 ];
 
+@AllowTrialExpired()
 @Controller('auth')
 export class AuthController {
   constructor(private service: AuthService) {}

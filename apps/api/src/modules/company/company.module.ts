@@ -21,6 +21,7 @@ import { BusinessType, Prisma, RoleCode } from '@prisma/client';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  AllowTrialExpired,
   AuthUser,
   CurrentUser,
   Roles,
@@ -194,6 +195,7 @@ class CompanyService {
 class CompanyController {
   constructor(private readonly service: CompanyService) {}
 
+  @AllowTrialExpired()
   @Get()
   get(@CurrentUser() u: AuthUser) {
     return this.service.get(u.companyId);

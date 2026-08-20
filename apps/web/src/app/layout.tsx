@@ -126,7 +126,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${dmSans.variable} ${oswald.variable} antialiased`}>
+      <body className={`${dmSans.variable} ${oswald.variable} overflow-x-clip antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

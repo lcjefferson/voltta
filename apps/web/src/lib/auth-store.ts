@@ -12,6 +12,9 @@ type User = {
   companyName?: string;
   companySlug?: string;
   platformAdmin?: boolean;
+  companyStatus?: string;
+  trialEndsAt?: string;
+  trialLocked?: boolean;
 };
 
 type AuthState = {

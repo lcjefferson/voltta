@@ -216,8 +216,8 @@ export function VerticalLandingPage({
                     className="size-14 rounded-full object-cover"
                     sizes="56px"
                   />
-                  <div>
-                    <figcaption className="font-bold">{t.name}</figcaption>
+                  <div className="min-w-0">
+                    <figcaption className="font-bold break-words">{t.name}</figcaption>
                     <p className="text-xs text-white/50">
                       {t.role}
                       <br />
@@ -274,7 +274,7 @@ export function VerticalLandingPage({
           <p className="mx-auto mt-6 max-w-xl text-base text-[#171715]/80 sm:text-lg">
             {landing.ctaBody}
           </p>
-          <p className="mt-8 font-display text-3xl tracking-[.1em]">
+          <p className="mt-8 font-display text-[clamp(1.75rem,8vw,3rem)] tracking-[.08em] sm:tracking-[.1em]">
             VOLTTA<sup className="text-base">™</sup>
           </p>
           <p className="mt-2">{SITE_TAGLINE}</p>

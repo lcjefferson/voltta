@@ -280,7 +280,7 @@ export default function AutomacoesPage() {
         </Button>
       </PageTitle>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         {isLoading && (
           <Card>
             <p className="text-sm text-neutral-500">Carregando automações...</p>

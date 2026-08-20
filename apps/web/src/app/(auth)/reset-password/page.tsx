@@ -128,15 +128,17 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f2] p-6">
-      <div className="w-full max-w-sm">
-        <Link href="/" className="font-display text-3xl tracking-widest">
+    <main className="flex min-h-screen items-center justify-center overflow-x-clip bg-[#f7f6f2] p-4 sm:p-6">
+      <div className="w-full min-w-0 max-w-sm">
+        <Link href="/" className="font-display text-2xl tracking-[.12em] sm:text-3xl sm:tracking-widest">
           VOLTTA™
         </Link>
         <p className="mt-12 text-xs font-bold tracking-[.2em] text-[#9b7a44]">
           NOVA SENHA
         </p>
-        <h1 className="mt-2 font-display text-5xl">REDEFINIR.</h1>
+        <h1 className="mt-2 font-display text-[clamp(1.75rem,8vw,3rem)] leading-none">
+          REDEFINIR.
+        </h1>
         <p className="mt-3 text-sm text-neutral-600">
           Escolha uma senha com pelo menos 6 caracteres.
         </p>

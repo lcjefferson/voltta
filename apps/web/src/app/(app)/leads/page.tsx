@@ -109,7 +109,7 @@ export default function LeadsPage() {
     <>
       <PageTitle eyebrow="CRM" title="LEADS" />
       <Card>
-        <div className="mb-5 flex justify-between gap-3">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div>
             <h2 className="font-bold">Contatos via WhatsApp</h2>
             <p className="mt-1 text-sm text-neutral-500">

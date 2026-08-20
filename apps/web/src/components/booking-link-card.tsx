@@ -110,8 +110,8 @@ export function BookingLinkCard({ dismissible = false }: Props) {
       <p className="mt-3 break-all rounded-md bg-white px-3 py-2 font-mono text-sm text-neutral-800">
         {absolute}
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" onClick={copy}>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <Button type="button" className="w-full sm:w-auto" onClick={copy}>
           {copied ? (
             <>
               <Check className="mr-2 size-4" /> COPIADO
@@ -125,12 +125,13 @@ export function BookingLinkCard({ dismissible = false }: Props) {
         <Button
           type="button"
           variant="outline"
+          className="w-full sm:w-auto"
           onClick={() => window.open(path, "_blank", "noopener,noreferrer")}
         >
           <ExternalLink className="mr-2 size-4" /> ABRIR
         </Button>
         {dismissible && (
-          <Button type="button" variant="ghost" onClick={hide}>
+          <Button type="button" variant="ghost" className="w-full sm:w-auto" onClick={hide}>
             <EyeOff className="mr-2 size-4" /> ESCONDER
           </Button>
         )}

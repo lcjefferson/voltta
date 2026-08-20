@@ -57,8 +57,15 @@ class PublicBookingService {
   ) {}
 
   async company(slug: string) {
+    const now = new Date();
     const c = await this.prisma.company.findFirst({
-      where: { slug, status: { in: ['TRIALING', 'ACTIVE'] } },
+      where: {
+        slug,
+        OR: [
+          { status: 'ACTIVE' },
+          { status: 'TRIALING', trialEndsAt: { gte: now } },
+        ],
+      },
       select: {
         id: true,
         name: true,

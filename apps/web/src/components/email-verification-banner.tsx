@@ -59,7 +59,7 @@ export function EmailVerificationBanner() {
   return (
     <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 lg:ml-64">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <p>
+        <p className="min-w-0 break-words">
           Confirme seu e-mail
           {profile?.email || localUser?.email
             ? ` (${profile?.email || localUser?.email})`
@@ -69,7 +69,7 @@ export function EmailVerificationBanner() {
         <Button
           type="button"
           variant="outline"
-          className="shrink-0 border-amber-300 bg-white hover:bg-amber-100"
+          className="w-full shrink-0 border-amber-300 bg-white hover:bg-amber-100 sm:w-auto"
           disabled={resend.isPending}
           onClick={() => resend.mutate()}
         >

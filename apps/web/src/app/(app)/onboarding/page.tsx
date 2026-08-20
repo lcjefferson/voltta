@@ -28,16 +28,18 @@ export default function OnboardingPage() {
             <Link
               href={href}
               key={label}
-              className="flex items-center gap-3 rounded-lg p-3 hover:bg-neutral-50"
+              className="flex min-w-0 items-center gap-3 rounded-lg p-3 hover:bg-neutral-50"
             >
               {done ? (
-                <CheckCircle2 className="size-5 text-[#a58450]" />
+                <CheckCircle2 className="size-5 shrink-0 text-[#a58450]" />
               ) : (
-                <Circle className="size-5 text-neutral-300" />
+                <Circle className="size-5 shrink-0 text-neutral-300" />
               )}
               <span
                 className={
-                  done ? "text-neutral-400 line-through" : "font-semibold"
+                  done
+                    ? "min-w-0 text-neutral-400 line-through"
+                    : "min-w-0 font-semibold"
                 }
               >
                 {label}

@@ -76,22 +76,24 @@ export default function DashboardPage() {
       <div className="mb-5">
         <BookingLinkCard dismissible />
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {metrics.map(([Icon, label, value, note]) => (
           <Card key={label}>
             <Icon className="size-5 text-[#a58450]" />
             <p className="mt-5 text-sm text-neutral-500">{label}</p>
-            <p className="mt-1 font-display text-4xl">{value}</p>
+            <p className="mt-1 font-display text-[clamp(1.6rem,7vw,2.25rem)] leading-none">
+              {value}
+            </p>
             <p className="mt-2 text-xs text-neutral-500">{note}</p>
           </Card>
         ))}
       </div>
       <div className="mt-4 grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <div className="flex justify-between">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
               <p className="text-sm text-neutral-500">Receita do mês</p>
-              <p className="mt-1 font-display text-5xl">
+              <p className="mt-1 font-display text-[clamp(1.7rem,8vw,3rem)] leading-none break-words">
                 {money(d.monthRevenue)}
               </p>
               <p className="mt-3 text-sm text-neutral-500">
@@ -99,7 +101,7 @@ export default function DashboardPage() {
                 {money(d.automationRecoveredRevenue)}
               </p>
             </div>
-            <Badge>Score VOLTTA</Badge>
+            <Badge className="w-fit shrink-0">Score VOLTTA</Badge>
           </div>
         </Card>
         <Card>

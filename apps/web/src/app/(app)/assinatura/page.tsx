@@ -1,6 +1,7 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { PageTitle } from "@/components/app-page";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useFeedback } from "@/providers/feedback-provider";
+import { useAuthStore } from "@/lib/auth-store";
+import { isTrialExpired } from "@/lib/trial";
 
 type Subscription = {
   status?: string;
@@ -20,10 +23,22 @@ type Subscription = {
 type Company = {
   stripeCustomerId?: string | null;
   status?: string;
+  trialEndsAt?: string;
+};
+
+type Me = {
+  trialLocked?: boolean;
+  companyStatus?: string;
+  trialEndsAt?: string;
+  role?: string;
 };
 
 export default function AssinaturaPage() {
   const { alert } = useFeedback();
+  const queryClient = useQueryClient();
+  const { user, patchUser } = useAuthStore();
+  const isAdmin = user?.role === "ADMIN";
+
   const { data: sub } = useQuery({
     queryKey: ["subscription"],
     queryFn: () => api<Subscription>("/billing/subscription"),
@@ -32,6 +47,23 @@ export default function AssinaturaPage() {
     queryKey: ["company"],
     queryFn: () => api<Company>("/company"),
   });
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("ok") !== "1") return;
+    let cancelled = false;
+    api<Me>("/auth/me")
+      .then((me) => {
+        if (!cancelled) patchUser(me);
+      })
+      .catch(() => {});
+    void queryClient.invalidateQueries({ queryKey: ["company"] });
+    void queryClient.invalidateQueries({ queryKey: ["subscription"] });
+    return () => {
+      cancelled = true;
+    };
+  }, [patchUser, queryClient]);
 
   const checkout = useMutation({
     mutationFn: () =>
@@ -73,6 +105,12 @@ export default function AssinaturaPage() {
   });
 
   const status = sub?.status || company?.status || "TRIALING";
+  const trialLocked =
+    !user?.platformAdmin &&
+    Boolean(
+      user?.trialLocked ||
+        isTrialExpired(company?.status, company?.trialEndsAt),
+    );
   const canManage = Boolean(company?.stripeCustomerId || sub);
   const errorMessage =
     (portal.error as Error | null)?.message ||
@@ -81,17 +119,29 @@ export default function AssinaturaPage() {
   return (
     <>
       <PageTitle eyebrow="CONTA" title="ASSINATURA" />
+      {trialLocked ? (
+        <Card className="mb-4 max-w-xl border-2 border-red-200 bg-red-50">
+          <p className="font-display text-xl text-red-800">TRIAL ENCERRADO</p>
+          <p className="mt-2 text-sm text-red-700">
+            {isAdmin
+              ? "O período de avaliação acabou. Assine para continuar usando agenda, clientes e automações."
+              : "O período de avaliação acabou. Peça ao administrador da conta para assinar e liberar o acesso."}
+          </p>
+        </Card>
+      ) : null}
       <Card className="max-w-xl border-2 border-[#c4a574]">
-        <div className="flex justify-between">
-          <div>
-            <h2 className="font-display text-3xl">PLANO VOLTTA</h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="font-display text-2xl sm:text-3xl">PLANO VOLTTA</h2>
             <p className="mt-1 text-sm text-neutral-500">
               Tudo para trazer seus clientes de volta.
             </p>
           </div>
-          <Badge>{status}</Badge>
+          <Badge className="w-fit shrink-0">
+            {trialLocked ? "TRIAL EXPIRADO" : status}
+          </Badge>
         </div>
-        <p className="mt-8 font-display text-5xl">
+        <p className="mt-8 font-display text-[clamp(2rem,10vw,3rem)] leading-none">
           R$79<span className="text-2xl">,90/mês</span>
         </p>
         <ul className="my-7 space-y-3 text-sm">
@@ -102,35 +152,51 @@ export default function AssinaturaPage() {
             "Score VOLTTA e relatórios",
           ].map((x) => (
             <li className="flex gap-2" key={x}>
-              <Check className="size-4 text-[#a58450]" />
+              <Check className="size-4 shrink-0 text-[#a58450]" />
               {x}
             </li>
           ))}
         </ul>
-        <div className="flex flex-wrap gap-3">
-          <Button
-            disabled={checkout.isPending}
-            onClick={() => checkout.mutate()}
-          >
-            {checkout.isPending ? "ABRINDO..." : "IR PARA O CHECKOUT"}
-          </Button>
-          <Tooltip
-            content={
-              canManage
-                ? "Abrir portal Stripe"
-                : "Conclua o checkout antes de gerenciar"
-            }
-          >
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+          {isAdmin ? (
             <Button
-              variant="outline"
-              disabled={portal.isPending || !canManage}
-              onClick={() => portal.mutate()}
+              className="w-full sm:w-auto"
+              disabled={checkout.isPending}
+              onClick={() => checkout.mutate()}
             >
-              {portal.isPending ? "ABRINDO..." : "GERENCIAR ASSINATURA"}
+              {checkout.isPending
+                ? "ABRINDO..."
+                : trialLocked
+                  ? "ASSINAR AGORA"
+                  : "IR PARA O CHECKOUT"}
             </Button>
-          </Tooltip>
+          ) : null}
+          {isAdmin ? (
+            <Tooltip
+              className="w-full sm:w-auto"
+              content={
+                canManage
+                  ? "Abrir portal Stripe"
+                  : "Conclua o checkout antes de gerenciar"
+              }
+            >
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                disabled={portal.isPending || !canManage}
+                onClick={() => portal.mutate()}
+              >
+                {portal.isPending ? "ABRINDO..." : "GERENCIAR ASSINATURA"}
+              </Button>
+            </Tooltip>
+          ) : null}
         </div>
-        {!canManage && (
+        {!isAdmin && trialLocked ? (
+          <p className="mt-4 text-sm text-neutral-500">
+            Somente o administrador da conta consegue concluir a assinatura.
+          </p>
+        ) : null}
+        {isAdmin && !canManage && (
           <p className="mt-4 text-sm text-neutral-500">
             Para gerenciar cartão ou cancelar, conclua o checkout primeiro.
           </p>

@@ -88,8 +88,8 @@ export default function WhatsappPage() {
       <PageTitle eyebrow="CANAIS" title="WHATSAPP" />
       <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
         <Card className="max-w-2xl">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+            <div className="min-w-0">
               <MessageCircle className="size-9 text-[#25D366]" />
               <h2 className="mt-5 text-xl font-bold">
                 Conecte seu WhatsApp Business
@@ -107,7 +107,9 @@ export default function WhatsappPage() {
                 . Escaneie o QR Code com o WhatsApp Business do seu negócio.
               </p>
             </div>
-            <Badge>{data?.status || (isLoading ? "..." : "DISCONNECTED")}</Badge>
+            <Badge className="w-fit shrink-0">
+              {data?.status || (isLoading ? "..." : "DISCONNECTED")}
+            </Badge>
           </div>
 
           {data?.profileName && (
@@ -140,7 +142,7 @@ export default function WhatsappPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="mt-3"
+                className="mt-3 w-full sm:w-auto"
                 disabled={reRegisterWebhook.isPending}
                 onClick={() => reRegisterWebhook.mutate()}
               >
@@ -162,8 +164,9 @@ export default function WhatsappPage() {
             </div>
           )}
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
             <Button
+              className="w-full sm:w-auto"
               disabled={connect.isPending || data?.connected}
               onClick={() => connect.mutate()}
             >
@@ -171,6 +174,7 @@ export default function WhatsappPage() {
             </Button>
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={refreshQr.isPending || !data?.instanceName}
               onClick={() => refreshQr.mutate()}
             >
@@ -179,6 +183,7 @@ export default function WhatsappPage() {
             </Button>
             <Button
               variant="outline"
+              className="w-full sm:w-auto"
               disabled={disconnect.isPending || data?.status === "DISCONNECTED"}
               onClick={() => disconnect.mutate()}
             >
@@ -204,7 +209,7 @@ export default function WhatsappPage() {
           <div className="mt-5 flex min-h-56 items-center justify-center rounded-lg bg-neutral-100 p-4">
             {qrSrc ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={qrSrc} alt="QR Code WhatsApp" className="max-h-56 w-auto" />
+              <img src={qrSrc} alt="QR Code WhatsApp" className="max-h-56 max-w-full w-auto" />
             ) : data?.connected ? (
               <p className="text-sm font-semibold text-green-700">
                 WhatsApp conectado
@@ -224,7 +229,7 @@ export default function WhatsappPage() {
 
         <Card className="lg:col-span-2">
           <h3 className="font-bold">Mensagem de teste</h3>
-          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto]">
+          <div className="mt-4 grid gap-3 lg:grid-cols-[1fr_2fr_auto]">
             <div>
               <Label>WhatsApp (DDD+número)</Label>
               <Input
@@ -242,6 +247,7 @@ export default function WhatsappPage() {
             </div>
             <div className="flex items-end">
               <Button
+                className="w-full lg:w-auto"
                 disabled={!testTo || test.isPending || !data?.connected}
                 onClick={() => test.mutate()}
               >

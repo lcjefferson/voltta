@@ -183,7 +183,7 @@ export default function LandingPage() {
 
           <div className="flex flex-1 flex-col justify-center pb-10 pt-8 sm:pb-16 sm:pt-10">
             <p
-              className="animate-reveal font-display text-4xl tracking-[.1em] text-[#c4a574] sm:text-5xl sm:tracking-[.16em] md:text-6xl"
+            className="animate-reveal font-display text-[clamp(1.75rem,9vw,3.75rem)] tracking-[.08em] text-[#c4a574] sm:tracking-[.16em]"
               style={{ animationDelay: "40ms" }}
             >
               VOLTTA<sup className="text-base sm:text-lg">™</sup>
@@ -379,7 +379,7 @@ export default function LandingPage() {
             <br />
             É CRESCIMENTO PARA O SEU NEGÓCIO.
           </h2>
-          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
             {audiences.map((a) => (
               <Link
                 key={a.title}
@@ -461,8 +461,8 @@ export default function LandingPage() {
                     className="size-14 rounded-full object-cover"
                     sizes="56px"
                   />
-                  <div>
-                    <figcaption className="font-bold">{t.name}</figcaption>
+                  <div className="min-w-0">
+                    <figcaption className="font-bold break-words">{t.name}</figcaption>
                     <p className="text-xs text-white/50">
                       {t.role}
                       <br />
@@ -516,11 +516,11 @@ export default function LandingPage() {
               ))}
             </ul>
           </div>
-          <div className="border-2 border-[#c4a574] bg-white p-6 sm:p-8 md:p-10">
+          <div className="min-w-0 border-2 border-[#c4a574] bg-white p-5 sm:p-8 md:p-10">
             <p className="text-xs font-bold tracking-[.2em] text-[#9b7a44]">
               VOLTTA™
             </p>
-            <p className="mt-3 font-display text-5xl sm:text-6xl">
+            <p className="mt-3 font-display text-[clamp(2.25rem,10vw,3.75rem)] leading-none">
               R$79<span className="text-2xl">,90</span>
             </p>
             <p className="text-sm text-neutral-500">

@@ -68,7 +68,19 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null);
-    throw new Error(errorMessage(payload, "Não foi possível concluir a solicitação."));
+    const message = errorMessage(
+      payload,
+      "Não foi possível concluir a solicitação.",
+    );
+    if (
+      typeof window !== "undefined" &&
+      response.status === 403 &&
+      message.includes("Trial encerrado") &&
+      !window.location.pathname.startsWith("/assinatura")
+    ) {
+      window.location.replace("/assinatura");
+    }
+    throw new Error(message);
   }
 
   return response.status === 204 ? (undefined as T) : response.json();

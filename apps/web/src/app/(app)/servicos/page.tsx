@@ -125,7 +125,7 @@ export default function ServicosPage() {
       <PageTitle eyebrow="OPERAÇÃO" title="SERVIÇOS" />
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         <Card>
-          <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <h2 className="font-bold">Serviços cadastrados</h2>
             <span className="text-sm text-neutral-500">
               {services.length}{" "}

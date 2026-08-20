@@ -17,18 +17,20 @@ export default function LoginPage() {
           </p>
         </div>
       </aside>
-      <section className="flex items-center justify-center p-6">
-        <div className="w-full max-w-sm">
+      <section className="flex min-w-0 items-center justify-center p-4 sm:p-6">
+        <div className="w-full max-w-sm min-w-0">
           <Link
             href="/"
-            className="font-display text-3xl tracking-widest md:hidden"
+            className="font-display text-2xl tracking-[.12em] sm:text-3xl sm:tracking-widest md:hidden"
           >
             VOLTTA™
           </Link>
           <p className="mt-8 text-sm font-bold tracking-[.2em] text-[#9b7a44]">
             BEM-VINDO DE VOLTA
           </p>
-          <h1 className="mt-2 font-display text-5xl">ENTRAR</h1>
+          <h1 className="mt-2 font-display text-[clamp(2rem,10vw,3rem)] leading-none">
+            ENTRAR
+          </h1>
           <p className="mt-3 text-sm text-neutral-600">
             Acesse a conta do seu negócio.
           </p>

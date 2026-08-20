@@ -72,6 +72,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
           email: string;
           role?: string;
           companyName?: string;
+          trialLocked?: boolean;
         };
       }>(mode === "signup" ? "/auth/signup" : "/auth/login", {
         method: "POST",
@@ -92,7 +93,12 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       });
       setAuth(data.accessToken, data.refreshToken, data.user);
       const params = new URLSearchParams(window.location.search);
-      router.push(params.get("next") || "/dashboard");
+      const next = params.get("next");
+      router.push(
+        data.user.trialLocked
+          ? "/assinatura"
+          : next || "/dashboard",
+      );
     } catch (error) {
       await alert({
         title: "Não foi possível continuar",

@@ -5,7 +5,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueuesModule } from './queues/queues.module';
-import { JwtAuthGuard, RolesGuard } from './common/guards/auth.guards';
+import {
+  JwtAuthGuard,
+  RolesGuard,
+  TrialLockGuard,
+} from './common/guards/auth.guards';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
 import { UsersModule } from './modules/users/users.module';
@@ -50,6 +54,7 @@ import { PlatformModule } from './modules/platform/platform.module';
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: TrialLockGuard },
   ],
 })
 export class AppModule {}

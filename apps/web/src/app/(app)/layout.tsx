@@ -43,18 +43,22 @@ const baseNav = [
 function NavLinks({
   pathname,
   platformAdmin,
+  trialLocked,
   onNavigate,
 }: {
   pathname: string;
   platformAdmin?: boolean;
+  trialLocked?: boolean;
   onNavigate?: () => void;
 }) {
-  const items = platformAdmin
-    ? ([
-        ["Plataforma", "/admin", Building2],
-        ...baseNav,
-      ] as const)
-    : baseNav;
+  const items = trialLocked
+    ? ([["Assinatura", "/assinatura", CreditCard]] as const)
+    : platformAdmin
+      ? ([
+          ["Plataforma", "/admin", Building2],
+          ...baseNav,
+        ] as const)
+      : baseNav;
   return (
     <nav className="mt-10 space-y-1">
       {items.map(([label, href, Icon]) => (
@@ -98,6 +102,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       platformAdmin?: boolean;
       companyName?: string;
       companySlug?: string;
+      companyStatus?: string;
+      trialEndsAt?: string;
+      trialLocked?: boolean;
     }>("/auth/me")
       .then((me) => {
         if (!cancelled) patchUser(me);
@@ -114,6 +121,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
   }, [hydrated, accessToken, pathname, router]);
+
+  const trialLocked = Boolean(user?.trialLocked);
+
+  useEffect(() => {
+    if (!hydrated || !accessToken || !trialLocked) return;
+    if (pathname !== "/assinatura") {
+      router.replace("/assinatura");
+    }
+  }, [hydrated, accessToken, trialLocked, pathname, router]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -140,6 +156,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (trialLocked && pathname !== "/assinatura") {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[#f7f6f2] text-sm text-neutral-500">
+        Redirecionando para assinatura...
+      </div>
+    );
+  }
+
   const initials = (user?.name || "VO")
     .split(" ")
     .map((p) => p[0])
@@ -147,16 +171,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     .slice(0, 2)
     .toUpperCase();
 
+  const homeHref = trialLocked ? "/assinatura" : "/dashboard";
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="min-h-screen bg-[#f7f6f2] text-[#1d1d1b]">
+    <div className="min-h-screen overflow-x-clip bg-[#f7f6f2] text-[#1d1d1b]">
       <aside className="fixed inset-y-0 z-30 hidden w-64 border-r border-neutral-800 bg-[#171715] p-6 text-white lg:block">
-        <Link href="/dashboard" className="font-display text-3xl tracking-widest">
+        <Link href={homeHref} className="font-display text-3xl tracking-widest">
           VOLTTA<sup className="text-xs">™</sup>
         </Link>
         <p className="mt-2 text-xs text-white/45">Seu cliente sempre de volta.</p>
-        <NavLinks pathname={pathname} platformAdmin={user?.platformAdmin} />
+        <NavLinks
+          pathname={pathname}
+          platformAdmin={user?.platformAdmin}
+          trialLocked={trialLocked}
+        />
       </aside>
 
       {menuOpen ? (
@@ -171,7 +200,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="flex items-start justify-between gap-3">
               <div>
                 <Link
-                  href="/dashboard"
+                  href={homeHref}
                   onClick={closeMenu}
                   className="font-display text-3xl tracking-widest"
                 >
@@ -193,6 +222,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <NavLinks
               pathname={pathname}
               platformAdmin={user?.platformAdmin}
+              trialLocked={trialLocked}
               onNavigate={closeMenu}
             />
           </aside>
@@ -211,7 +241,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="size-5" />
           </button>
-          <span className="font-display text-2xl tracking-widest lg:hidden">
+          <span className="font-display text-xl tracking-[.12em] sm:text-2xl sm:tracking-widest lg:hidden">
             VOLTTA™
           </span>
         </div>
@@ -237,7 +267,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </Tooltip>
         </div>
       </header>
-      <main className="p-5 lg:ml-64 lg:p-8">{children}</main>
+      <main className="min-w-0 overflow-x-clip p-4 sm:p-5 lg:ml-64 lg:p-8">
+        {children}
+      </main>
     </div>
   );
 }

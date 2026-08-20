@@ -14,10 +14,21 @@
   --font-display: var(--font-oswald);
 }
 
+html {
+  overflow-x: clip;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-dm-sans), Arial, sans-serif;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+img,
+video {
+  max-width: 100%;
 }
 
 * { border-color: rgb(229 229 229); }

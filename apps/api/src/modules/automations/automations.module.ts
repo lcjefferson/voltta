@@ -27,6 +27,7 @@ import {
 import { PrismaModule } from '../../prisma/prisma.module';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthUser, CurrentUser, Roles } from '../../common/decorators/auth.decorators';
+import { isTrialExpired, TRIAL_EXPIRED_MESSAGE } from '../../common/trial';
 import {
   CompanyStatus,
   CustomerLifecycle,
@@ -210,15 +211,17 @@ export class AutomationsService {
     let failed = 0;
     let skipped = 0;
     try {
+      const now = new Date();
       const companies = await this.prisma.company.findMany({
         where: {
-          status: {
-            in: [
-              CompanyStatus.TRIALING,
-              CompanyStatus.ACTIVE,
-              CompanyStatus.PAST_DUE,
-            ],
-          },
+          OR: [
+            { status: CompanyStatus.ACTIVE },
+            { status: CompanyStatus.PAST_DUE },
+            {
+              status: CompanyStatus.TRIALING,
+              trialEndsAt: { gte: now },
+            },
+          ],
           automationRules: {
             some: { trigger: 'A5', isActive: true },
           },
@@ -236,7 +239,6 @@ export class AutomationsService {
         },
       });
 
-      const now = new Date();
       for (const company of companies) {
         const tz = company.timezone || 'America/Sao_Paulo';
         const local = localCalendar(now, tz);
@@ -580,6 +582,22 @@ export class AutomationsService {
       data: { status: 'RUNNING' },
     });
     if (!claimed.count) return;
+
+    const company = await this.prisma.company.findUnique({
+      where: { id: execution.companyId },
+      select: { status: true, trialEndsAt: true },
+    });
+    if (isTrialExpired(company?.status, company?.trialEndsAt)) {
+      await this.prisma.automationExecution.update({
+        where: { id: execution.id },
+        data: {
+          status: 'SKIPPED',
+          executedAt: new Date(),
+          errorMessage: TRIAL_EXPIRED_MESSAGE,
+        },
+      });
+      return;
+    }
 
     const trigger = execution.rule.trigger;
     if (

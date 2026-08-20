@@ -160,7 +160,9 @@ export default function AdminPage() {
           <Card key={label}>
             <Icon className="size-5 text-[#a58450]" />
             <p className="mt-4 text-sm text-neutral-500">{label}</p>
-            <p className="mt-1 font-display text-4xl">{value}</p>
+            <p className="mt-1 font-display text-[clamp(1.6rem,7vw,2.25rem)] leading-none">
+              {value}
+            </p>
             <p className="mt-2 text-xs text-neutral-500">{note}</p>
           </Card>
         ))}
@@ -174,8 +176,12 @@ export default function AdminPage() {
               Trial, assinatura Stripe e uso de cada negócio.
             </p>
           </div>
-          <form className="flex w-full gap-2 lg:max-w-sm" onSubmit={search}>
+          <form
+            className="flex w-full min-w-0 gap-2 lg:max-w-sm"
+            onSubmit={search}
+          >
             <Input
+              className="min-w-0 flex-1"
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder="Buscar nome, slug ou e-mail"

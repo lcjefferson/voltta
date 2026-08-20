@@ -116,8 +116,8 @@ export function PublicBookingPage({ slug }: { slug: string }) {
   const selectedSlotLabel = slots.find((s) => s.startsAt === startsAt)?.label;
 
   return (
-    <main className="min-h-screen bg-[#171715] p-5 text-white">
-      <div className="mx-auto max-w-xl py-8">
+    <main className="min-h-screen overflow-x-clip bg-[#171715] p-4 text-white sm:p-5">
+      <div className="mx-auto max-w-xl py-6 sm:py-8">
         <div className="flex flex-col items-center gap-3">
           {shop?.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -132,7 +132,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
             </p>
           )}
         </div>
-        <div className="mt-8 rounded-xl bg-[#f7f6f2] p-6 text-[#1d1d1b] md:p-9">
+        <div className="mt-8 rounded-xl bg-[#f7f6f2] p-4 text-[#1d1d1b] sm:p-6 md:p-9">
           <div className="flex items-start gap-3">
             {shop?.logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -146,7 +146,7 @@ export function PublicBookingPage({ slug }: { slug: string }) {
               <p className="text-xs font-bold tracking-[.18em] text-[#9b7a44]">
                 {shop?.name?.toUpperCase() || "AGENDAMENTO"}
               </p>
-              <h1 className="mt-2 font-display text-4xl">
+              <h1 className="mt-2 font-display text-[clamp(1.5rem,7vw,2.25rem)] leading-[1.05] break-words">
                 {shopError ? "Negócio não encontrado" : titles[step]}
               </h1>
             </div>

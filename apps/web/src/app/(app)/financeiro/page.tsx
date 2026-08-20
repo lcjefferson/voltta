@@ -87,18 +87,20 @@ export default function FinanceiroPage() {
   return (
     <>
       <PageTitle eyebrow="RESULTADOS" title="FINANCEIRO" />
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
         {cards.map(([label, value]) => (
           <Card key={label}>
             <p className="text-sm text-neutral-500">{label}</p>
-            <p className="mt-2 font-display text-4xl">{value}</p>
+            <p className="mt-2 font-display text-[clamp(1.45rem,6.5vw,2.25rem)] leading-none break-words">
+              {value}
+            </p>
           </Card>
         ))}
       </div>
 
       <div className="mt-5 grid gap-5 lg:grid-cols-[1.4fr_320px]">
         <Card>
-          <div className="mb-5 flex items-center justify-between gap-3">
+          <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <div>
               <h2 className="font-bold">Lançamentos</h2>
               <p className="mt-1 text-sm text-neutral-500">
@@ -113,10 +115,10 @@ export default function FinanceiroPage() {
               revenues.map((r) => (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between gap-3 py-3"
+                  className="flex items-start justify-between gap-3 py-3"
                 >
-                  <div>
-                    <p className="font-semibold">
+                  <div className="min-w-0">
+                    <p className="font-semibold break-words">
                       {r.customer?.name || "Receita avulsa"}
                     </p>
                     <p className="text-sm text-neutral-500">
@@ -130,7 +132,7 @@ export default function FinanceiroPage() {
                       {new Date(r.revenueDate).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
-                  <p className="font-bold">{money(Number(r.amount))}</p>
+                  <p className="shrink-0 font-bold">{money(Number(r.amount))}</p>
                 </div>
               ))
             ) : (
@@ -179,21 +181,21 @@ export default function FinanceiroPage() {
           <Card>
             <h2 className="font-bold">Resumo</h2>
             <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between">
+              <div className="flex justify-between gap-3">
                 <span className="text-neutral-500">Receita anual</span>
-                <span className="font-semibold">
+                <span className="shrink-0 font-semibold">
                   {money(summary?.yearRevenue || 0)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Total histórico</span>
-                <span className="font-semibold">
+              <div className="flex justify-between gap-3">
+                <span className="min-w-0 text-neutral-500">Total histórico</span>
+                <span className="shrink-0 font-semibold">
                   {money(summary?.totalRevenue || 0)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Clientes recorrentes</span>
-                <span className="font-semibold">
+              <div className="flex justify-between gap-3">
+                <span className="min-w-0 text-neutral-500">Clientes recorrentes</span>
+                <span className="shrink-0 font-semibold">
                   {summary?.recurringCustomers || 0}
                 </span>
               </div>
@@ -208,9 +210,9 @@ export default function FinanceiroPage() {
                   {summary.topServices.map((s) => (
                     <div
                       key={s.name + s.count}
-                      className="flex justify-between text-sm"
+                      className="flex justify-between gap-3 text-sm"
                     >
-                      <span>
+                      <span className="min-w-0 break-words">
                         {s.name}{" "}
                         <span className="text-neutral-400">({s.count})</span>
                       </span>

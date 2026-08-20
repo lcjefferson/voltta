@@ -83,15 +83,17 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#f7f6f2] p-6">
-      <div className="w-full max-w-sm">
-        <Link href="/" className="font-display text-3xl tracking-widest">
+    <main className="flex min-h-screen items-center justify-center overflow-x-clip bg-[#f7f6f2] p-4 sm:p-6">
+      <div className="w-full min-w-0 max-w-sm">
+        <Link href="/" className="font-display text-2xl tracking-[.12em] sm:text-3xl sm:tracking-widest">
           VOLTTA™
         </Link>
         <p className="mt-12 text-xs font-bold tracking-[.2em] text-[#9b7a44]">
           CONFIRMAÇÃO
         </p>
-        <h1 className="mt-2 font-display text-5xl">E-MAIL.</h1>
+        <h1 className="mt-2 font-display text-[clamp(1.75rem,8vw,3rem)] leading-none">
+          E-MAIL.
+        </h1>
         <Suspense
           fallback={
             <p className="mt-8 text-sm text-neutral-500">Carregando...</p>
