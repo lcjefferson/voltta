@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageTitle } from "@/components/app-page";
 import { BookingLinkCard } from "@/components/booking-link-card";
+import { SetupGuide } from "@/components/setup-guide";
 
 type Dashboard = {
   customersAtRisk: number;
@@ -73,6 +74,7 @@ export default function DashboardPage() {
   return (
     <>
       <PageTitle eyebrow="VISÃO GERAL" title="DASHBOARD VOLTTA" />
+      <SetupGuide compact />
       <div className="mb-5">
         <BookingLinkCard dismissible />
       </div>

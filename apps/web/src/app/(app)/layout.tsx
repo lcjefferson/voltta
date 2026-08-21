@@ -9,6 +9,7 @@ import {
   CircleDollarSign,
   CreditCard,
   LayoutDashboard,
+  LifeBuoy,
   LogOut,
   Menu,
   MessageCircle,
@@ -25,6 +26,7 @@ import { useAuthStore } from "@/lib/auth-store";
 import { api } from "@/lib/api";
 import { EmailVerificationBanner } from "@/components/email-verification-banner";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ProductTour } from "@/components/product-tour";
 
 const baseNav = [
   ["Dashboard", "/dashboard", LayoutDashboard],
@@ -36,6 +38,7 @@ const baseNav = [
   ["Financeiro", "/financeiro", CircleDollarSign],
   ["Automações", "/automacoes", Repeat2],
   ["WhatsApp", "/whatsapp", MessageCircle],
+  ["Guia", "/onboarding", LifeBuoy],
   ["Assinatura", "/assinatura", CreditCard],
   ["Configurações", "/configuracoes", Settings],
 ] as const;
@@ -270,6 +273,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
         <main className="min-w-0 p-4 sm:p-5 lg:p-8">{children}</main>
       </div>
+      <ProductTour enabled={!trialLocked} />
     </div>
   );
 }

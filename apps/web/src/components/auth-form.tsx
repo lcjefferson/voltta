@@ -97,7 +97,7 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       router.push(
         data.user.trialLocked
           ? "/assinatura"
-          : next || "/dashboard",
+          : next || (mode === "signup" ? "/dashboard?tour=1" : "/dashboard"),
       );
     } catch (error) {
       await alert({

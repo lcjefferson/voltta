@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { BookingLinkCard } from "@/components/booking-link-card";
+import { SetupGuide } from "@/components/setup-guide";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -316,6 +317,7 @@ export default function ConfiguracoesPage() {
     <>
       <PageTitle eyebrow="CONTA" title="CONFIGURAÇÕES" />
       <div className="grid max-w-2xl gap-5">
+        <SetupGuide />
         <BookingLinkCard />
 
         <Card>
