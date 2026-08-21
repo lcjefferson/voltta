@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { DM_Sans, Oswald } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/query-provider";
@@ -27,8 +27,19 @@ const oswald = Oswald({
   display: "swap",
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
+  alternates: {
+    types: {
+      "text/plain": `${SITE_URL}/llms.txt`,
+    },
+  },
   title: {
     default: SITE_TITLE,
     template: "%s | Voltta",
@@ -111,22 +122,13 @@ export default function RootLayout({
 
   return (
     <html lang="pt-BR">
-      <head>
-        <link
-          rel="alternate"
-          type="text/plain"
-          href={`${SITE_URL}/llms.txt`}
-          title="llms.txt"
-        />
-        {/* Schema.org SoftwareApplication (JSON-LD) */}
+      <body className={`${dmSans.variable} ${oswald.variable} antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(softwareJsonLd),
           }}
         />
-      </head>
-      <body className={`${dmSans.variable} ${oswald.variable} overflow-x-clip antialiased`}>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

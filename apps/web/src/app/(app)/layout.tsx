@@ -175,7 +175,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-[#f7f6f2] text-[#1d1d1b]">
+    <div className="min-h-screen bg-[#f7f6f2] text-[#1d1d1b]">
       <aside className="fixed inset-y-0 z-30 hidden w-64 border-r border-neutral-800 bg-[#171715] p-6 text-white lg:block">
         <Link href={homeHref} className="font-display text-3xl tracking-widest">
           VOLTTA<sup className="text-xs">™</sup>
@@ -196,9 +196,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             className="absolute inset-0 bg-black/50"
             onClick={closeMenu}
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col border-r border-neutral-800 bg-[#171715] p-6 text-white shadow-xl">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(18rem,85vw)] flex-col overflow-y-auto border-r border-neutral-800 bg-[#171715] p-6 text-white shadow-xl">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <Link
                   href={homeHref}
                   onClick={closeMenu}
@@ -229,47 +229,47 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       ) : null}
 
-      <EmailVerificationBanner />
-      <header className="flex h-16 items-center justify-between border-b bg-white px-4 sm:px-5 lg:ml-64">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            className="rounded-md p-2 text-neutral-700 hover:bg-neutral-100 lg:hidden"
-            aria-label="Abrir menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu className="size-5" />
-          </button>
-          <span className="font-display text-xl tracking-[.12em] sm:text-2xl sm:tracking-widest lg:hidden">
-            VOLTTA™
-          </span>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          <span className="hidden text-sm text-neutral-500 sm:block">
-            {user?.companyName || "Barbearia VOLTTA"}
-          </span>
-          <div className="grid size-9 place-items-center rounded-full bg-[#c4a574] text-sm font-bold">
-            {initials}
-          </div>
-          <Tooltip content="Sair">
+      <div className="min-w-0 lg:pl-64">
+        <EmailVerificationBanner />
+        <header className="flex h-16 items-center justify-between gap-2 border-b bg-white px-4 sm:px-5">
+          <div className="flex min-w-0 items-center gap-2">
             <button
               type="button"
-              className="rounded-md p-2 text-neutral-500 hover:bg-neutral-100"
-              aria-label="Sair"
-              onClick={() => {
-                clearAuth();
-                router.push("/login");
-              }}
+              className="rounded-md p-2 text-neutral-700 hover:bg-neutral-100 lg:hidden"
+              aria-label="Abrir menu"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(true)}
             >
-              <LogOut className="size-4" />
+              <Menu className="size-5" />
             </button>
-          </Tooltip>
-        </div>
-      </header>
-      <main className="min-w-0 overflow-x-clip p-4 sm:p-5 lg:ml-64 lg:p-8">
-        {children}
-      </main>
+            <span className="truncate font-display text-xl tracking-[.12em] sm:text-2xl sm:tracking-widest lg:hidden">
+              VOLTTA™
+            </span>
+          </div>
+          <div className="ml-auto flex shrink-0 items-center gap-3">
+            <span className="hidden max-w-[12rem] truncate text-sm text-neutral-500 sm:block">
+              {user?.companyName || "Barbearia VOLTTA"}
+            </span>
+            <div className="grid size-9 place-items-center rounded-full bg-[#c4a574] text-sm font-bold">
+              {initials}
+            </div>
+            <Tooltip content="Sair">
+              <button
+                type="button"
+                className="rounded-md p-2 text-neutral-500 hover:bg-neutral-100"
+                aria-label="Sair"
+                onClick={() => {
+                  clearAuth();
+                  router.push("/login");
+                }}
+              >
+                <LogOut className="size-4" />
+              </button>
+            </Tooltip>
+          </div>
+        </header>
+        <main className="min-w-0 p-4 sm:p-5 lg:p-8">{children}</main>
+      </div>
     </div>
   );
 }

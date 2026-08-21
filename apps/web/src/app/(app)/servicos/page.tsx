@@ -70,6 +70,9 @@ export default function ServicosPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["services"] });
       resetCreate();
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
     },
   });
 
@@ -123,7 +126,7 @@ export default function ServicosPage() {
   return (
     <>
       <PageTitle eyebrow="OPERAÇÃO" title="SERVIÇOS" />
-      <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,320px)]">
         <Card>
           <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
             <h2 className="font-bold">Serviços cadastrados</h2>
@@ -225,9 +228,9 @@ export default function ServicosPage() {
                     </form>
                   ) : (
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <p className="font-semibold">{s.name}</p>
+                          <p className="font-semibold break-words">{s.name}</p>
                           {!s.isActive && (
                             <Badge className="bg-neutral-200 text-neutral-600">
                               Inativo

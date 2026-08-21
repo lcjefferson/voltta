@@ -57,7 +57,7 @@ export function EmailVerificationBanner() {
   if (verified) return null;
 
   return (
-    <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 lg:ml-64">
+    <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <p className="min-w-0 break-words">
           Confirme seu e-mail

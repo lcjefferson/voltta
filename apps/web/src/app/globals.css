@@ -15,15 +15,33 @@
 }
 
 html {
-  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-dm-sans), Arial, sans-serif;
+  overflow-wrap: break-word;
+}
+
+/*
+ * iOS Safari zooms the page when a focused control is under 16px.
+ * That zoom sticks after blur/submit, so the user has to pinch to reset.
+ */
+input,
+select,
+textarea {
+  font-size: 16px;
   max-width: 100%;
-  overflow-x: clip;
 }
 
 img,
