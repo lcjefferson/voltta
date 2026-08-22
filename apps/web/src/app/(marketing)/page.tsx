@@ -620,6 +620,17 @@ export default function LandingPage() {
             Blog
           </Link>
         </p>
+        <p className="mt-3">
+          Desenvolvido por{" "}
+          <a
+            href="https://fortallabs.com.br"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white/60 underline-offset-2 hover:underline"
+          >
+            FortalLabs
+          </a>
+        </p>
       </footer>
     </main>
   );
