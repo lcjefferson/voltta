@@ -3,6 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type { SetupProgress } from "@/lib/help";
+import { isTourDoneLocally } from "@/lib/tour-storage";
+import { useAuthStore } from "@/lib/auth-store";
 
 type OnboardingSetting = {
   completed?: boolean;
@@ -30,6 +32,7 @@ export function useOnboardingSetting(opts?: { enabled?: boolean }) {
 }
 
 export function useSetupProgress() {
+  const companyId = useAuthStore((s) => s.user?.companyId);
   const onboarding = useOnboardingSetting();
   const company = useQuery({
     queryKey: ["company"],
@@ -61,7 +64,8 @@ export function useSetupProgress() {
   });
 
   const progress: SetupProgress = {
-    tourCompleted: Boolean(onboarding.data?.completed),
+    tourCompleted:
+      Boolean(onboarding.data?.completed) || isTourDoneLocally(companyId),
     hasPhoneOrLogo: Boolean(company.data?.phone || company.data?.logoUrl),
     hasService: (services.data?.length || 0) > 0,
     hasCustomer:

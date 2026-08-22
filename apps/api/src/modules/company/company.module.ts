@@ -207,11 +207,13 @@ class CompanyController {
     return this.service.update(u.companyId, dto);
   }
 
+  @AllowTrialExpired()
   @Get('onboarding')
   settings(@CurrentUser() u: AuthUser) {
     return this.service.settings(u.companyId);
   }
 
+  @AllowTrialExpired()
   @Patch('onboarding')
   settingsUpdate(@CurrentUser() u: AuthUser, @Body() dto: SettingsDto) {
     return this.service.updateSettings(u.companyId, dto.value);

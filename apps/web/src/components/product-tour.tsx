@@ -6,7 +6,12 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { TOUR_STEPS } from "@/lib/help";
+import {
+  isTourDoneLocally,
+  markTourDoneLocally,
+} from "@/lib/tour-storage";
 import { useOnboardingSetting } from "@/hooks/use-setup-progress";
+import { useAuthStore } from "@/lib/auth-store";
 import { useQueryClient } from "@tanstack/react-query";
 
 const REPLAY_KEY = "voltta_tour_replay";
@@ -26,6 +31,7 @@ export function ProductTour({
   const router = useRouter();
   const pathname = usePathname();
   const qc = useQueryClient();
+  const companyId = useAuthStore((s) => s.user?.companyId);
   const { data: onboarding, isLoading } = useOnboardingSetting({
     enabled,
   });
@@ -46,24 +52,25 @@ export function ProductTour({
     async (skipped: boolean) => {
       sessionStorage.removeItem(REPLAY_KEY);
       setOpen(false);
+      markTourDoneLocally(companyId);
+      const nextValue = {
+        ...(onboarding || {}),
+        completed: true,
+        skipped,
+        tourCompletedAt: new Date().toISOString(),
+      };
+      qc.setQueryData(["onboarding"], nextValue);
       try {
         await api("/company/onboarding", {
           method: "PATCH",
-          body: JSON.stringify({
-            value: {
-              ...(onboarding || {}),
-              completed: true,
-              skipped,
-              tourCompletedAt: new Date().toISOString(),
-            },
-          }),
+          body: JSON.stringify({ value: nextValue }),
         });
         await qc.invalidateQueries({ queryKey: ["onboarding"] });
       } catch {
-        /* tour already closed */
+        /* localStorage already prevents repeat on this device */
       }
     },
-    [onboarding, qc],
+    [companyId, onboarding, qc],
   );
 
   useEffect(() => {
@@ -71,7 +78,9 @@ export function ProductTour({
     const params = new URLSearchParams(window.location.search);
     const forced =
       params.get("tour") === "1" || sessionStorage.getItem(REPLAY_KEY) === "1";
-    if (forced || onboarding?.completed === false) {
+    const alreadyDone =
+      onboarding?.completed === true || isTourDoneLocally(companyId);
+    if (forced) {
       autoStarted.current = true;
       setStep(0);
       setOpen(true);
@@ -80,8 +89,15 @@ export function ProductTour({
         const next = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`;
         router.replace(next);
       }
+      return;
     }
-  }, [enabled, isLoading, onboarding?.completed, router]);
+    if (alreadyDone) return;
+    if (onboarding?.completed === false) {
+      autoStarted.current = true;
+      setStep(0);
+      setOpen(true);
+    }
+  }, [enabled, isLoading, onboarding?.completed, companyId, router]);
 
   useEffect(() => {
     const onStart = () => {
