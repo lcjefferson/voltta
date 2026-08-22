@@ -95,9 +95,11 @@ export function AuthForm({ mode }: { mode: "login" | "signup" }) {
       const params = new URLSearchParams(window.location.search);
       const next = params.get("next");
       router.push(
-        data.user.trialLocked
-          ? "/assinatura"
-          : next || (mode === "signup" ? "/dashboard?tour=1" : "/dashboard"),
+        mode === "signup"
+          ? "/obrigado"
+          : data.user.trialLocked
+            ? "/assinatura"
+            : next || "/dashboard",
       );
     } catch (error) {
       await alert({
