@@ -94,7 +94,11 @@ class BillingService {
   }
 
   async handleWebhook(rawBody: Buffer, signature: string) {
-    const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
+    const secret = (
+      this.config.get<string>('STRIPE_WEBHOOK_SIGNING_SECRET') ||
+      this.config.get<string>('STRIPE_WEBHOOK_SECRET') ||
+      ''
+    ).trim();
     let event: Stripe.Event;
 
     if (this.stripe && secret && !secret.includes('replace') && signature) {
